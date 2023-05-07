@@ -9,7 +9,8 @@ ssh-keygen -t ed25519
 ```
 Публичный ключ добавил в метаданные VM.
 
-2. Вошёл ssh по IP адресу VM, из под пользователя `root` установил репозиторий PostgreSQL и СУБД 15 версии:
+2. Вошёл ssh по IP адресу VM, из под пользователя `root` добавил репозиторий PostgreSQL и
+установил пакет с PostgreSQL 15-й версии:
 ```bash
 echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list
 wget -qO- https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo tee /etc/apt/trusted.gpg.d/pgdg.asc &>/dev/null
@@ -160,4 +161,6 @@ postgres=# select * from persons;
 ```
 Запись есть, поскольку запрос видит снимок БД на момент своего начала, а в
 нём уже есть данные первой транзакции.
+
+
 ---
