@@ -2,7 +2,7 @@
 # Курс `PostgreSQL Cloud Solutions`
 ### ДЗ #1 (Занятие "SQL и реляционные СУБД. PostgreSQL в облаках")
 
-1. Создал и запустил VM в GCE otus-pgcloud2023-micro (Ubuntu 23.04).
+1. Создал и запустил VM в GCE otus-pgcloud2023-micro (Ubuntu 23.04).  
 Сгенерировал пару ssh ключей:
 ```bash
 ssh-keygen -t ed25519
