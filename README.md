@@ -17,7 +17,7 @@ wget -qO- https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo tee /etc/apt
 apt install postgresql-15
 ```
 Убедился, что кластер PostgreSQL запущен:
-```bash
+```
 root@otus-pgcloud2023-micro:~# pg_lsclusters 
 Ver Cluster Port Status Owner    Data directory              Log file
 15  main    5432 online postgres /var/lib/postgresql/15/main /var/log/postgresql/postgresql-15-main.log
