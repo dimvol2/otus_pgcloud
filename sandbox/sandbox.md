@@ -20,3 +20,24 @@ apt install postgresql-15
 create table persons(id serial, first_name text, second_name text);
 ```
 
+```sql
+postgres=*# commit;
+COMMIT
+```
+
+```sql
+postgres=*# select * from persons;
+
+ id | first_name | second_name 
+----+------------+-------------
+  1 | ivan       | ivanov
+  2 | petr       | petrov
+(2 rows)
+```
+
+```sql
+postgres=# start transaction;
+START TRANSACTION
+postgres=*# 
+```
+
