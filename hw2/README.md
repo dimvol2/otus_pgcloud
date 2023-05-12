@@ -7,7 +7,7 @@
 2. Вошёл в VM, обновил описания пакетов и установил в систему пакет docker:
 ```
 apt update
-apt install docker
+apt install docker.io
 ```
 Убедился, что docker-демон работает:
 ```
@@ -99,6 +99,10 @@ otus=# insert into otus_hw2 values (3, 'three'), (11, 'eleven');
 INSERT 0 2
 ```
 
+Добавил правило в firewall GCE для пропуска трафика на стандартный порт сервера PostgreSQL:
+```
+gcloud compute firewall-rules create --allow=tcp:5432 --description="Allow incoming traffic to postgres" --direction=INGRESS
+```
 Подключился к БД извне GCP и проверил наличие данных в таблице:
 ```
 bash-5.1$ psql -h 34.125.236.54 -U otus
