@@ -93,9 +93,9 @@ otus=#
 
 Создал таблицу и вставил в неё две строки:
 ```
-otus=# create table otus_hw3 (i int, s text);
+otus=# create table otus_hw2 (i int, s text);
 CREATE TABLE
-otus=# insert into otus_hw3 values (3, 'three'), (11, 'eleven');
+otus=# insert into otus_hw2 values (3, 'three'), (11, 'eleven');
 INSERT 0 2
 ```
 
@@ -107,7 +107,7 @@ psql (14.7)
 SSL connection (protocol: TLSv1.3, cipher: TLS_AES_256_GCM_SHA384, bits: 256, compression: off)
 Type "help" for help.
 
-otus=# select * from otus_hw3; 
+otus=# select * from otus_hw2; 
  i  |   s    
 ----+--------
   3 | three
@@ -146,7 +146,7 @@ psql (14.7 (Debian 14.7-1.pgdg110+1))
 SSL connection (protocol: TLSv1.3, cipher: TLS_AES_256_GCM_SHA384, bits: 256, compression: off)
 Type "help" for help.
 
-otus=# select * from otus_hw3;
+otus=# select * from otus_hw2;
  i  |   s    
 ----+--------
   3 | three
