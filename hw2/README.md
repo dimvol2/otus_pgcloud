@@ -4,7 +4,8 @@
 
 1. Создал и запустил VM в GCE otus-pgcloud2023-medium-ubuntu-2004 (Ubuntu 20.04 LTS).  
 
-2. Вошёл в VM, обновил описания пакетов и установил в систему пакет docker:
+2. Вошёл в VM, обновил описания пакетов и установил в систему пакет
+docker.io:
 ```
 apt update
 apt install docker.io
