@@ -138,7 +138,7 @@ root@otus-pgcloud2023-medium-ubuntu-2004:~# docker run -d --name pg14.7 \
 ebffae456043b1e9e6f48071f800e664f6a82585104d40ba461a2b9508325d91
 ```
 
-Подключился из клиентского контейнера, убедился, что данные присуствуют:
+Подключился из клиентского контейнера, убедился, что данные присутствуют:
 ```
 root@e5e8fc683dda:/# psql -h pg14.7 -U otus
 Password for user otus: 
