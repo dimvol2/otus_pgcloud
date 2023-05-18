@@ -29,7 +29,7 @@ Ver Cluster Port Status Owner    Data directory              Log file
 15  main    5432 online postgres /var/lib/postgresql/15/main /var/log/postgresql/postgresql-15-main.log
 ```
 
-3. Создал в БД таблицу, добавил строку:
+3. Создал в БД таблицу, добавил в неё строку данных:
 ```
 postgres@otus-pgcloud2023-hw3:~$ psql -U postgres
 psql (15.3 (Ubuntu 15.3-1.pgdg20.04+1))
@@ -57,7 +57,7 @@ gcloud compute disks create hw3-additional-disk --size=10GB
 ```
 gcloud compute instances attach-disk otus-pgcloud2023-hw3 --disk hw3-additional-disk
 ```
-Убедился в его наличии:
+Убедился в его наличии на VM:
 ```
 root@otus-pgcloud2023-hw3:~# lsblk 
 NAME    MAJ:MIN RM   SIZE RO TYPE MOUNTPOINT
@@ -70,7 +70,7 @@ sda       8:0    0    10G  0 disk
 └─sda15   8:15   0   106M  0 part /boot/efi
 sdb       8:16   0    10G  0 disk 
 ```
-Создал раздел и файловую систему:
+Создал на нём раздел и файловую систему:
 ```
 root@otus-pgcloud2023-hw3:~# parted /dev/sdb mklabel gpt
 Information: You may need to update /etc/fstab.
@@ -123,14 +123,15 @@ bbc@otus-pgcloud2023-hw3:~$ mount | grep sdb1
 postgres@otus-pgcloud2023-hw3:~$ mv /var/lib/postgresql/15 /mnt/pgdata
 ```
 
-Попробовал запусить PostgreSQL, не запускается:
+Попробовал запустить PostgreSQL, не запускается:
 ```
 postgres@otus-pgcloud2023-hw3:~$ pg_ctlcluster 15 main start
 Error: /var/lib/postgresql/15/main is not accessible or does not exist
 ```
 
 Поменял в конфигурационном файле `/etc/postgresql/15/main/postgresql.conf`
-значение параметра `data_directory`, указывающий директорию с данными:
+значение параметра `data_directory`, указывающего на директорию с данными
+кластера:
 ```
 sed -i s@/var/lib/postgresql/@/mnt/pgdata/@ /etc/postgresql/15/main/postgresql.conf
 ```
@@ -186,7 +187,7 @@ postgres@otus-pgcloud2023-hw3:~$ pg_ctlcluster 15 main stop
 
 На новой VM удалил данные кластера БД:
 ```
-rm -rf /var/lib/postgresql/*
+root@otus-pgcloud2023-hw3-2:~# rm -rf /var/lib/postgresql/*
 ```
 
 9. Отмонтировал диск на первой VM:
@@ -211,7 +212,12 @@ root@otus-pgcloud2023-hw3-2:~# lsblk | grep sdb1
 root@otus-pgcloud2023-hw3-2:~# mount /dev/sdb1 /var/lib/postgresql
 ```
 
-Запустил кластер и убедился в наличии данных, добавленных, когда диск был
+В `/etc/fstab` добавил:
+```
+LABEL=pgpartition /var/lib/postgresql   xfs     defaults        0 2
+```
+
+10. Запустил кластер и убедился в наличии данных, добавленных, когда диск был
 доступен на первой VM:
 ```
 postgres@otus-pgcloud2023-hw3-2:~$ pg_ctlcluster 15 main start
