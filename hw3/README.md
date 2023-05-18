@@ -2,7 +2,7 @@
 # Курс `PostgreSQL Cloud Solutions`
 ### ДЗ #3 "Настройка дисков для Постгреса" (Занятие "Настройка PostgreSQL")
 
-1. Создал и запустил VM в GCE otus-pgcloud2023-medium-ubuntu-2004 (Ubuntu 20.04 LTS):
+1. Создал и запустил VM в GCE (Ubuntu 20.04 LTS):
 ```
 gcloud compute instances create otus-pgcloud2023-hw3 --zone=us-west4-b \
 --machine-type=e2-medium \
