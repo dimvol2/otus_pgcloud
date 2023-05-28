@@ -230,7 +230,7 @@ echo "deb [arch=amd64] \
 ```
 
 Установил пакет `pg_probackup` управления резервным копированием и восстановлением кластеров баз данных
-PostgreSQL версии соответствующий используемой мажорной версии СУБД:
+PostgreSQL версии, соответствующей используемой мажорной версии СУБД:
 ```
 root@otus-pgcloud2023-hw5-backup:~# apt install pg-probackup-15 -y
 root@otus-pgcloud2023-hw5-primary:~# apt install pg-probackup-15 -y
