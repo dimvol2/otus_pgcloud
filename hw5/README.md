@@ -12,8 +12,8 @@ for i in primary standby backup;
   done;  
 ```
 
-`otus-pgcloud2023-hw5-primary` - VM с ведущим сервером PostgreSQL,
-`otus-pgcloud2023-hw5-standby` - VM с резервным сервером PostgreSQL,
+`otus-pgcloud2023-hw5-primary` - VM с ведущим сервером PostgreSQL,  
+`otus-pgcloud2023-hw5-standby` - VM с резервным сервером PostgreSQL,  
 `otus-pgcloud2023-hw5-backup` - VM с сервером резервных копий
 
 2. Установил на три VM СУБД PostgreSQL и утилиту управления контрольными
