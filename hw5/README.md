@@ -75,11 +75,13 @@ CREATE ROLE
 ```
 
 и дал им доступ в `pg_hba.conf` на ведущем и резервном сервере PostgreSQL:
-echo "hostssl replication replicanto 0.0.0.0/0 scram-sha-256" >> /etc/postgresql/15/main/pg_hba.conf
-echo "hostssl replication backup 0.0.0.0/0 scram-sha-256" >> /etc/postgresql/15/main/pg_hba.conf
+```
+echo "hostssl replication replicanto 0.0.0.0/0 scram-sha-256" >> /etc/postgresql/15/main/pg_hba.conf  
+echo "hostssl replication backup 0.0.0.0/0 scram-sha-256" >> /etc/postgresql/15/main/pg_hba.conf 
 echo "hostssl backupdb backup 0.0.0.0/0 scram-sha-256" >> /etc/postgresql/15/main/pg_hba.conf
+```
 
-Перечитал конфигурацию ведущего сервер СУБД для применения параметров конфигурации
+Перечитал конфигурацию ведущего сервера СУБД для применения параметров конфигурации
 из `pg_hba.conf`: 
 ```
 postgres=# select pg_reload_conf();
