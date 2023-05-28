@@ -273,7 +273,7 @@ postgres@otus-pgcloud2023-hw5-backup:~$ pg_probackup-15 set-config -B /home/pgba
 резервный сервер без ввода пароля:
 ```
 postgres@otus-pgcloud2023-hw5-backup:~$ echo "otus-pgcloud2023-hw5-primary:5432:*:backup:strong_backup_password" > ~/.pgpass
-postgres@otus-pgcloud2023-hw5-backup:~$ echo "otus-pgcloud2023-hw5-standby:5432:*:backup:strong_backup_password" > ~/.pgpass
+postgres@otus-pgcloud2023-hw5-backup:~$ echo "otus-pgcloud2023-hw5-standby:5432:*:backup:strong_backup_password" >> ~/.pgpass
 postgres@otus-pgcloud2023-hw5-backup:~$ chmod 600 ~/.pgpass
 ```
 
@@ -284,103 +284,89 @@ root@otus-pgcloud2023-hw5-backup:~# systemctl stop postgresql
 postgres@otus-pgcloud2023-hw5-backup:~$ rm -rf /var/lib/postgresql/15/main/* 
 ```
 
-11. Сделал полную копию:
+11. Проверил настройки кластеров PostgreSQL на возможность создания
+резервной копии с реплики.
+
+На резервном сервере:
 ```
-postgres@otus-pgcloud2023-hw5-backup:~$ pg_probackup-15 backup -B /home/pgbackups --instance hw5 -b FULL -j 2 --stream --temp-slot
-INFO: Backup start, pg_probackup version: 2.5.12, instance: hw5, backup ID: RVCAIX, backup mode: FULL, wal mode: STREAM, remote: true, compress-algorithm: zlib, compress-level: 2
-WARNING: This PostgreSQL instance was initialized without data block checksums. pg_probackup have no way to detect data block corruption without them. Reinitialize PGDATA with option '--data-checksums'.
-INFO: Backup RVCAIX is going to be taken from standby
-INFO: Database backup start
-INFO: wait for pg_backup_start()
-INFO: Wait for WAL segment /home/pgbackups/backups/hw5/RVCAIX/database/pg_wal/00000001000000000000009A to be streamed
-INFO: PGDATA size: 37MB
-INFO: Current Start LSN: 0/9A84BD00, TLI: 1
-INFO: Start transferring data files
-INFO: Data files are transferred, time elapsed: 1s
-INFO: wait for pg_stop_backup()
-INFO: pg_stop backup() successfully executed
-INFO: stop_lsn: 0/9A86BE98
-WARNING: Could not read WAL record at 0/9A86BE98: invalid record length at 0/9A86BE98: wanted 24, got 0
-INFO: Wait for LSN 0/9A86BE98 in streamed WAL segment /home/pgbackups/backups/hw5/RVCAIX/database/pg_wal/00000001000000000000009A
-WARNING: Could not read WAL record at 0/9A86BE98: invalid record length at 0/9A86BE98: wanted 24, got 0
-[n lines stripped]
-WARNING: Could not read WAL record at 0/9A86BE98: invalid record length at 0/9A86BE98: wanted 24, got 0
-INFO: Getting the Recovery Time from WAL
-INFO: Syncing backup files to disk
-INFO: Backup files are synced, time elapsed: 0
-INFO: Validating backup RVCAIX
-INFO: Backup RVCAIX data files are valid
-INFO: Backup RVCAIX resident size: 28MB
-INFO: Backup RVCAIX completed
+postgres=# show hot_standby;
+ hot_standby 
+-------------
+ on
+(1 row)
 ```
 
-Сделал инкрементальную копию в режиме `DELTA`:
+На ведущем:
 ```
-postgres@otus-pgcloud2023-hw5-backup:~$ pg_probackup-15 backup -B /home/pgbackups --instance hw5 -b DELTA -j 2 --stream --temp-slot
-INFO: Backup start, pg_probackup version: 2.5.12, instance: hw5, backup ID: RVCAXP, backup mode: DELTA, wal mode: STREAM, remote: true, compress-algorithm: zlib, compress-level: 2
-WARNING: This PostgreSQL instance was initialized without data block checksums. pg_probackup have no way to detect data block corruption without them. Reinitialize PGDATA with option '--data-checksums'.
-INFO: Backup RVCAXP is going to be taken from standby
+postgres=# show full_page_writes ;
+ full_page_writes 
+------------------
+ on
+(1 row)
+```
+
+Сделал полную резервную копию кластера с ведомого сервера в два параллельных потока:
+```
+postgres@otus-pgcloud2023-hw5-backup:~$ pg_probackup-15 backup -B /home/pgbackups --instance hw5 -b FULL -j 2 --stream --temp-slot
+INFO: Backup start, pg_probackup version: 2.5.12, instance: hw5, backup ID: RVE2UP, backup mode: FULL, wal mode: STREAM, remote: true, compress-algorithm: zlib, compress-level: 2
+INFO: This PostgreSQL instance was initialized with data block checksums. Data block corruption will be detected
+INFO: Backup RVE2UP is going to be taken from standby
 INFO: Database backup start
 INFO: wait for pg_backup_start()
-INFO: Parent backup: RVCAIX
-INFO: Wait for WAL segment /home/pgbackups/backups/hw5/RVCAXP/database/pg_wal/00000001000000000000009A to be streamed
+INFO: Wait for WAL segment /home/pgbackups/backups/hw5/RVE2UP/database/pg_wal/000000010000000000000003 to be streamed
 INFO: PGDATA size: 37MB
-INFO: Current Start LSN: 0/9A86BE98, TLI: 1
-INFO: Parent Start LSN: 0/9A84BD00, TLI: 1
+INFO: Current Start LSN: 0/34211F8, TLI: 1
 INFO: Start transferring data files
 INFO: Data files are transferred, time elapsed: 1s
 INFO: wait for pg_stop_backup()
 INFO: pg_stop backup() successfully executed
-INFO: stop_lsn: 0/9A86BF80
-WARNING: Could not read WAL record at 0/9A86BF80: invalid record length at 0/9A86BF80: wanted 24, got 0
-INFO: Wait for LSN 0/9A86BF80 in streamed WAL segment /home/pgbackups/backups/hw5/RVCAXP/database/pg_wal/00000001000000000000009A
-WARNING: Could not read WAL record at 0/9A86BF80: invalid record length at 0/9A86BF80: wanted 24, got 0
-[n lines stripped]
-WARNING: Could not read WAL record at 0/9A86BF80: invalid record length at 0/9A86BF80: wanted 24, got 0
+INFO: stop_lsn: 0/34212E0
+WARNING: Could not read WAL record at 0/34212E0: invalid record length at 0/34212E0: wanted 24, got 0
+INFO: Wait for LSN 0/34212E0 in streamed WAL segment /home/pgbackups/backups/hw5/RVE2UP/database/pg_wal/000000010000000000000003
+WARNING: Could not read WAL record at 0/34212E0: invalid record length at 0/34212E0: wanted 24, got 0
+[n line stripped]
+WARNING: Could not read WAL record at 0/34212E0: invalid record length at 0/34212E0: wanted 24, got 0
 INFO: Getting the Recovery Time from WAL
 INFO: Failed to find Recovery Time in WAL, forced to trust current_timestamp
 INFO: Syncing backup files to disk
-INFO: Backup files are synced, time elapsed: 0
-INFO: Validating backup RVCAXP
-INFO: Backup RVCAXP data files are valid
-INFO: Backup RVCAXP resident size: 16MB
-INFO: Backup RVCAXP completed
+INFO: Backup files are synced, time elapsed: 1s
+INFO: Validating backup RVE2UP
+INFO: Backup RVE2UP data files are valid
+INFO: Backup RVE2UP resident size: 28MB
+INFO: Backup RVE2UP completed
 ```
 
-Проверил наличие в каталоге резернвый копий:
+Проверил наличие копии в каталоге резервных копий:
 ```
-postgres@otus-pgcloud2023-hw5-backup:~$ pg_probackup-15 show -B /home/pgbackups 
-
-BACKUP INSTANCE 'hw5'
-===================================================================================================================================
- Instance  Version  ID      Recovery Time           Mode  WAL Mode  TLI   Time  Data   WAL  Zratio  Start LSN   Stop LSN    Status 
-===================================================================================================================================
- hw5       15       RVCAXP  2023-05-27 23:08:16+00  DELTA  STREAM    1/1   11s  146kB  16MB    1.88  0/9A86BE98  0/9A86BF80  OK
- hw5       15       RVCAIX  2023-05-27 22:44:35+00  FULL   STREAM    1/0   31s   12MB  16MB    2.95  0/9A84BD00  0/9A86BE98  OK     
+postgres@otus-pgcloud2023-hw5-backup:~$ pg_probackup-15 show -B /home/pgbackups --instance hw5
+================================================================================================================================
+ Instance  Version  ID      Recovery Time           Mode  WAL Mode  TLI  Time  Data   WAL  Zratio  Start LSN  Stop LSN   Status 
+================================================================================================================================
+ hw5       15       RVE2UP  2023-05-28 22:08:52+00  FULL  STREAM    1/0   14s  12MB  16MB    2.94  0/34211F8  0/34212E0  OK     
 ```
 
-Восстановил кластер локально на сервере резервных копий:
+Восстановил кластер PostgreSQL локально на сервере резервных копий:
 ```
-postgres@otus-pgcloud2023-hw5-backup:~$ pg_probackup-15 restore -B /home/pgbackups --instance hw5 -j 2 -D /var/lib/postgresql/15/main -i RVCAIX --remote-proto=none
-INFO: Validating backup RVCAIX
-INFO: Backup RVCAIX data files are valid
-INFO: Backup RVCAIX WAL segments are valid
-INFO: Backup RVCAIX is valid.
-INFO: Restoring the database from backup at 2023-05-27 22:59:21+00
+postgres@otus-pgcloud2023-hw5-backup:~$ pg_probackup-15 restore -B /home/pgbackups --instance hw5 -j 2 -D /var/lib/postgresql/15/main -i RVE2UP --remote-proto=none
+INFO: Validating backup RVE2UP
+INFO: Backup RVE2UP data files are valid
+INFO: Backup RVE2UP WAL segments are valid
+INFO: Backup RVE2UP is valid.
+INFO: Restoring the database from backup at 2023-05-28 22:08:49+00
 INFO: Start restoring backup files. PGDATA size: 53MB
 INFO: Backup files are restored. Transfered bytes: 53MB, time elapsed: 0
 INFO: Restore incremental ratio (less is better): 100% (53MB/53MB)
 INFO: Syncing restored files to disk
-INFO: Restored backup files are synced, time elapsed: 4s
-INFO: Restore of backup RVCAIX completed.
+INFO: Restored backup files are synced, time elapsed: 3s
+INFO: Restore of backup RVE2UP completed.
 ```
 
-Запустил СУБД:
+Запустил сервер PostgreSQL:
 ```
 root@otus-pgcloud2023-hw5-backup:~# systemctl start postgresql
 ```
 
-Проверил наличие данных:
+Проверил наличие данных на восстановленном из резервной копии кластере:
 ```
 postgres=# \c otus 
 You are now connected to database "otus" as user "postgres".
@@ -392,9 +378,19 @@ otus=# select * from t;
 (2 rows)
 ```
 
+Резервное копирование и восстановление из резервной копии кластера СУБД
+PostgreSQL работает!
+
+
+12. Проверяю работу резервного копирования на нагруженном кластере
+PostgreSQL.
+
+Подготовил на ведущем сервере БД и таблицы для программы тестирования
+производительности `pgbench`:
+```
 postgres=# create database pgbench_test;
 CREATE DATABASE
-postgres=# \q
+
 postgres@otus-pgcloud2023-hw5-primary:~$ pgbench -i -s 100 pgbench_test
 dropping old tables...
 NOTICE:  table "pgbench_accounts" does not exist, skipping
@@ -403,72 +399,96 @@ NOTICE:  table "pgbench_history" does not exist, skipping
 NOTICE:  table "pgbench_tellers" does not exist, skipping
 creating tables...
 generating data (client-side)...
-10000000 of 10000000 tuples (100%) done (elapsed 34.68 s, remaining 0.00 s)
+10000000 of 10000000 tuples (100%) done (elapsed 43.53 s, remaining 0.00 s)
 vacuuming...
 creating primary keys...
-done in 50.24 s (drop tables 0.02 s, create tables 0.01 s, client-side generate 34.79 s, vacuum 3.35 s, primary keys 12.08 s).
+done in 56.79 s (drop tables 0.00 s, create tables 0.01 s, client-side generate 43.62 s, vacuum 1.62 s, primary keys 11.55 s).
+```
 
+Запустил тест производительности:
+```
+postgres@otus-pgcloud2023-hw5-primary:~$ pgbench -c 90 -T 300 pgbench_test
+```
 
+И параллельно сделал полную резервную копию с ведомого сервера:
+```
 postgres@otus-pgcloud2023-hw5-backup:~$ pg_probackup-15 backup -B /home/pgbackups --instance hw5 -b FULL -j 2 --stream --temp-slot
-INFO: Backup start, pg_probackup version: 2.5.12, instance: hw5, backup ID: RVCC04, backup mode: FULL, wal mode: STREAM, remote: true, compress-algorithm: zlib, compress-level: 2
-WARNING: This PostgreSQL instance was initialized without data block checksums. pg_probackup have no way to detect data block corruption without them. Reinitialize PGDATA with option '--data-checksums'.
-INFO: Backup RVCC04 is going to be taken from standby
+INFO: Backup start, pg_probackup version: 2.5.12, instance: hw5, backup ID: RVE3WF, backup mode: FULL, wal mode: STREAM, remote: true, compress-algorithm: zlib, compress-level: 2
+INFO: This PostgreSQL instance was initialized with data block checksums. Data block corruption will be detected
+INFO: Backup RVE3WF is going to be taken from standby
 INFO: Database backup start
 INFO: wait for pg_backup_start()
-INFO: Wait for WAL segment /home/pgbackups/backups/hw5/RVCC04/database/pg_wal/0000000100000000000000DC to be streamed
-INFO: PGDATA size: 1550MB
-INFO: Current Start LSN: 0/DCFFEF00, TLI: 1
+INFO: Wait for WAL segment /home/pgbackups/backups/hw5/RVE3WF/database/pg_wal/000000010000000000000045 to be streamed
+INFO: PGDATA size: 1542MB
+INFO: Current Start LSN: 0/45FFFAA8, TLI: 1
 INFO: Start transferring data files
-INFO: Data files are transferred, time elapsed: 29s
+INFO: Data files are transferred, time elapsed: 31s
 INFO: wait for pg_stop_backup()
 INFO: pg_stop backup() successfully executed
-INFO: stop_lsn: 1/16C20AF8
-INFO: Getting the Recovery Time from WAL
-INFO: Syncing backup files to disk
-INFO: Backup files are synced, time elapsed: 2s
-INFO: Validating backup RVCC04
-INFO: Backup RVCC04 data files are valid
-INFO: Backup RVCC04 resident size: 1113MB
-INFO: Backup RVCC04 completed
-
-
-с ведущего:
-
-postgres@otus-pgcloud2023-hw5-backup:~$ pg_probackup-15 backup -B /home/pgbackups --instance hw5 -b FULL -j 2 --stream --temp-slot --remote-host=otus-pgcloud2023-hw5-primary
-INFO: Backup start, pg_probackup version: 2.5.12, instance: hw5, backup ID: RVCCKX, backup mode: FULL, wal mode: STREAM, remote: true, compress-algorithm: zlib, compress-level: 2
-WARNING: This PostgreSQL instance was initialized without data block checksums. pg_probackup have no way to detect data block corruption without them. Reinitialize PGDATA with option '--data-checksums'.
-INFO: Database backup start
-INFO: wait for pg_backup_start()
-INFO: Wait for WAL segment /home/pgbackups/backups/hw5/RVCCKX/database/pg_wal/000000010000000100000063 to be streamed
-INFO: PGDATA size: 1558MB
-INFO: Current Start LSN: 1/63082078, TLI: 1
-INFO: Start transferring data files
-INFO: Data files are transferred, time elapsed: 4m:35s
-INFO: wait for pg_stop_backup()
-INFO: pg_stop backup() successfully executed
-INFO: stop_lsn: 1/A58DA830
+INFO: stop_lsn: 0/65E56D30
 INFO: Getting the Recovery Time from WAL
 INFO: Syncing backup files to disk
 INFO: Backup files are synced, time elapsed: 1s
-INFO: Validating backup RVCCKX
-INFO: Backup RVCCKX data files are valid
-INFO: Backup RVCCKX resident size: 1231MB
-INFO: Backup RVCCKX completed
+INFO: Validating backup RVE3WF
+INFO: Backup RVE3WF data files are valid
+INFO: Backup RVE3WF resident size: 693MB
+INFO: Backup RVE3WF completed
+```
 
+Проверил наличие копии в каталоге резервных копий:
+```
+postgres@otus-pgcloud2023-hw5-backup:~$ pg_probackup-15 show -B /home/pgbackups --instance hw5
+====================================================================================================================================
+ Instance  Version  ID      Recovery Time           Mode  WAL Mode  TLI  Time   Data    WAL  Zratio  Start LSN   Stop LSN    Status 
+====================================================================================================================================
+ hw5       15       RVE3WF  2023-05-28 22:32:00+00  FULL  STREAM    1/0   35s  149MB  544MB   10.36  0/45FFFAA8  0/65E56D30  OK     
+ hw5       15       RVE2UP  2023-05-28 22:08:52+00  FULL  STREAM    1/0   14s   12MB   16MB    2.94  0/34211F8   0/34212E0   OK     
+```
 
-postgres@otus-pgcloud2023-hw5-backup:~$ pg_probackup-15 show -B /home/pgbackups 
+Запустил тест производительности ещё раз:
+```
+postgres@otus-pgcloud2023-hw5-primary:~$ pgbench -c 90 -T 300 pgbench_test
+```
 
-BACKUP INSTANCE 'hw5'
-========================================================================================================================================
- Instance  Version  ID      Recovery Time           Mode   WAL Mode  TLI    Time   Data     WAL  Zratio  Start LSN   Stop LSN    Status 
-========================================================================================================================================
- hw5       15       RVCCKX  2023-05-27 23:48:50+00  FULL   STREAM    1/0  5m:10s  159MB  1072MB    9.81  1/63082078  1/A58DA830  OK     
- hw5       ----     RVCCHB  ----                    FULL   STREAM    0/0       0      0       0    1.00  0/0         0/0         ERROR  
- hw5       15       RVCCEH  2023-05-27 23:40:30+00  FULL   STREAM    1/0     43s  161MB    16MB    9.73  1/4D000028  1/4D003C98  OK     
- hw5       15       RVCCB9  ----                    FULL   STREAM    0/0      1s      0       0    1.00  0/0         0/0         ERROR  
- hw5       15       RVCC04  2023-05-27 23:31:52+00  FULL   STREAM    1/0     40s  153MB   960MB   10.16  0/DCFFEF00  1/16C20AF8  OK     
- hw5       15       RVCAXP  2023-05-27 23:08:16+00  DELTA  STREAM    1/1     11s  146kB    16MB    1.88  0/9A86BE98  0/9A86BF80  OK     
- hw5       15       RVCAIX  2023-05-27 22:44:35+00  FULL   STREAM    1/0     31s   12MB    16MB    2.95  0/9A84BD00  0/9A86BE98  OK     
+И параллельно сделал полную резервную копию теперь с ведущего сервера:
+```
+postgres@otus-pgcloud2023-hw5-backup:~$ pg_probackup-15 backup -B /home/pgbackups --instance hw5 -b FULL -j 2 --stream --temp-slot --remote-host=otus-pgcloud2023-hw5-primary
+INFO: Backup start, pg_probackup version: 2.5.12, instance: hw5, backup ID: RVE48H, backup mode: FULL, wal mode: STREAM, remote: true, compress-algorithm: zlib, compress-level: 2
+INFO: This PostgreSQL instance was initialized with data block checksums. Data block corruption will be detected
+The authenticity of host 'otus-pgcloud2023-hw5-primary (10.182.0.22)' can't be established.
+ECDSA key fingerprint is SHA256:+vPN4uiD5rb0CXEK7nRL57MB4tcJ+/5WUywjDweVfPA.
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+INFO: Database backup start
+INFO: wait for pg_backup_start()
+INFO: Wait for WAL segment /home/pgbackups/backups/hw5/RVE48H/database/pg_wal/0000000100000000000000A5 to be streamed
+INFO: PGDATA size: 1557MB
+INFO: Current Start LSN: 0/A5F27A80, TLI: 1
+INFO: Start transferring data files
+INFO: Data files are transferred, time elapsed: 3m:44s
+INFO: wait for pg_stop_backup()
+INFO: pg_stop backup() successfully executed
+INFO: stop_lsn: 0/DC41CFC8
+INFO: Getting the Recovery Time from WAL
+INFO: Syncing backup files to disk
+INFO: Backup files are synced, time elapsed: 1s
+INFO: Validating backup RVE48H
+INFO: Backup RVE48H data files are valid
+INFO: Backup RVE48H resident size: 1054MB
+INFO: Backup RVE48H completed
+```
+
+Проверил наличие новой копии в каталоге резервных копий:
+```
+postgres@otus-pgcloud2023-hw5-backup:~$ pg_probackup-15 show -B /home/pgbackups --instance hw5
+======================================================================================================================================
+ Instance  Version  ID      Recovery Time           Mode  WAL Mode  TLI    Time   Data    WAL  Zratio  Start LSN   Stop LSN    Status 
+======================================================================================================================================
+ hw5       15       RVE48H  2023-05-28 22:43:54+00  FULL  STREAM    1/0  5m:21s  158MB  896MB    9.87  0/A5F27A80  0/DC41CFC8  OK     
+ hw5       15       RVE3WF  2023-05-28 22:32:00+00  FULL  STREAM    1/0     35s  149MB  544MB   10.36  0/45FFFAA8  0/65E56D30  OK     
+ hw5       15       RVE2UP  2023-05-28 22:08:52+00  FULL  STREAM    1/0     14s   12MB   16MB    2.94  0/34211F8   0/34212E0   OK     
+```
+
+Резервное копирование кластера СУБД PostgreSQL под нагрузкой работает!
 
 
 ---
