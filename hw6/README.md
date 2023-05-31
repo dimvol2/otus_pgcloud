@@ -91,54 +91,13 @@ for i in {1..3};
     sudo apt upgrade -y -q && echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | \
     sudo tee -a /etc/apt/sources.list.d/pgdg.list && \
     wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add - && sudo apt-get update && \
-    sudo apt -y install postgresql-15 postgresql-15-pg-checksums' & \
+    sudo apt -y install postgresql-15' & \
   done;
 ```
 
-5. 
-Вот пока неясно, можно ли раскатывать patroni сразу на трёх VM?
-apt install -y python3-pip git joe
-pip3 install psycopg2-binary
-
-root@pgsql1:~# systemctl stop postgresql
-postgres@pgsql1:~$ pg_dropcluster 15 main
-Warning: systemd was not informed about the removed cluster yet. Operations like "service postgresql start" might fail. To fix, run:
-  sudo systemctl daemon-reload
-postgres@pgsql1:~$ pg_lsclusters 
-Ver Cluster Port Status Owner Data directory Log file
-
-root@pgsql1:~# pip3 install patroni[etcd]
-
-root@pgsql1:~# ln -s /usr/local/bin/patroni /bin/patroni
-
-cat > /etc/systemd/system/patroni.service < EOF
-[Unit]
-Description=High availability PostgreSQL Cluster
-After=syslog.target network.target
-
-[Service]
-Type=simple
-User=postgres
-Group=postgres
-ExecStart=/usr/local/bin/patroni /etc/patroni.yml
-KillMode=process
-TimeoutSec=30
-Restart=no
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-root@pgsql1:~# systemctl daemon-reload ?? nnado?
-
-/etc/patroni.yml (with bin_dir!)
-
-systemctl enable patroni
-systemctl start patroni
-
 5. Удалил дефолтный кластер PostgreSQL, установил patroni:
 ```
-for i in {2..3};
+for i in {1..3};
   do gcloud compute ssh pgsql$i --zone=us-west4-b \
     --command='sudo apt install -y python3-pip joe && sudo systemctl stop postgresql@15-main &&\
     sudo -u postgres pg_dropcluster 15 main && sudo pip3 install psycopg2-binary patroni[etcd] &&\
@@ -148,7 +107,7 @@ for i in {2..3};
 
 Создал systemctl сервис patroni:
 ```
-for i in {2..3};
+for i in {1..3};
   do gcloud compute ssh pgsql$i \
     --command='cat > temp.cfg << EOF 
 [Unit]
@@ -171,10 +130,10 @@ EOF
   done;
 ```
 
-Разместил конфиг patroni:
+Распространил конфиг patroni:
 
 ```
-for i in {2..3};
+for i in {1..3};
   do gcloud compute ssh pgsql$i \
     --command='cat > temp.cfg << EOF
 scope: patroni
@@ -220,7 +179,7 @@ postgresql:
       password: strong_superuser_password
     rewind:
       username: rewind
-      password: string_rewind_password
+      password: strong_rewind_password
   parameters:
     unix_socket_directories: '.'
 tags:
@@ -234,12 +193,25 @@ EOF
   done;
 ```
 
-Запустил patroni:
+Запустил patroni и активировал его сервис:
 ```
-for i in {2..3};
+for i in {1..3};
   do gcloud compute ssh pgsql$i --zone=us-west4-b \
     --command='sudo systemctl enable patroni && sudo systemctl start patroni' & \
   done;
 ```
+
+Проверил работу кластера patroni:
+```
+root@pgsql1:~# patronictl -c /etc/patroni.yml list
++ Cluster: patroni ----+---------+---------+----+-----------+
+| Member | Host        | Role    | State   | TL | Lag in MB |
++--------+-------------+---------+---------+----+-----------+
+| pgsql1 | 10.182.0.47 | Leader  | running |  1 |           |
+| pgsql2 | 10.182.0.46 | Replica | running |  1 |         0 |
+| pgsql3 | 10.182.0.48 | Replica | running |  1 |         0 |
++--------+-------------+---------+---------+----+-----------+
+```
+
 
 ---
