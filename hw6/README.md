@@ -443,12 +443,12 @@ listen pgReadOnly
 EOF
 ```
 
-Перезагружаем сервис для применения конфигурации:
+Перезагрузил сервис для применения конфигурации:
 ```
 systemctl restart haproxy
 ```
 
-Проверяем подключение через haproxy в режиме read-write:
+Проверил подключение через haproxy в режиме read-write:
 ```
 root@haproxy:~# psql -h 127.0.0.1 -d otus -U postgres -p 5432
 Password for user postgres: 
@@ -461,7 +461,7 @@ otus=# create database haproxy;
 CREATE DATABASE
 ```
 
-Проверяем подключение через haproxy в режиме read-only:
+Проверил подключение через haproxy в режиме read-only:
 ```
 root@haproxy:~# psql -h 127.0.0.1 -d otus -U postgres -p 5433
 Password for user postgres: 
@@ -487,5 +487,7 @@ otus=# \l
 ```
 
 haproxy настроен и работает.
+
+
 
 ---
