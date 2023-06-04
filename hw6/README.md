@@ -339,12 +339,12 @@ pgbouncer настроен и работает.
 gcloud compute instances create haproxy \
   --machine-type=e2-small \
   --image-project=ubuntu-os-cloud --image=ubuntu-2004-focal-v20230523 \
-  --zone=us-east4-a
+  --zone=us-west4-b
 ```
 
 Зашёл на VM:
 ```
-gcloud compute ssh haproxy --zone=us-east4-a
+gcloud compute ssh haproxy --zone=us-west4-b
 ```
 
 Установил haproxy 2.8:
@@ -581,5 +581,162 @@ CREATE DATABASE
 
 Отказоустойчивость протестирована!
 
+9. Резервное копирование.
+
+Установил на узлы кластера patroni репозиторий софта резервного
+копирования и восстановления `pg_probackup` и саму программу:
+```
+for i in haproxy pgsql1 pgsql2 pgsql3;
+  do gcloud compute ssh $i --zone=us-west4-b \
+    --command='echo "deb [arch=amd64] https://repo.postgrespro.ru/pg_probackup/deb/ $(lsb_release -cs) main-$(lsb_release -cs)" |\
+    sudo tee -a /etc/apt/sources.list.d/pg_probackup.list \
+  && sudo wget -O - https://repo.postgrespro.ru/pg_probackup/keys/GPG-KEY-PG_PROBACKUP \
+  | sudo apt-key add - \
+  && sudo apt-get update && sudo apt install pg-probackup-15 -y' & \
+  done;
+```
+
+Создал в кластере patroni отдельную роль для резервного копирования:
+```
+postgres=# CREATE ROLE backup LOGIN REPLICATION PASSWORD 'strong_backup_password';
+CREATE ROLE
+```
+
+Настроил права доступа в БД otus для роли `backup` согласно документации
+`pg_probackup`:
+
+```
+BEGIN;
+GRANT USAGE ON SCHEMA pg_catalog TO backup;
+GRANT EXECUTE ON FUNCTION pg_catalog.current_setting(text) TO backup;
+GRANT EXECUTE ON FUNCTION pg_catalog.set_config(text, text, boolean) TO backup;
+GRANT EXECUTE ON FUNCTION pg_catalog.pg_is_in_recovery() TO backup;
+GRANT EXECUTE ON FUNCTION pg_catalog.pg_backup_start(text, boolean) TO backup;
+GRANT EXECUTE ON FUNCTION pg_catalog.pg_backup_stop(boolean) TO backup;
+GRANT EXECUTE ON FUNCTION pg_catalog.pg_create_restore_point(text) TO backup;
+GRANT EXECUTE ON FUNCTION pg_catalog.pg_switch_wal() TO backup;
+GRANT EXECUTE ON FUNCTION pg_catalog.pg_last_wal_replay_lsn() TO backup;
+GRANT EXECUTE ON FUNCTION pg_catalog.txid_current() TO backup;
+GRANT EXECUTE ON FUNCTION pg_catalog.txid_current_snapshot() TO backup;
+GRANT EXECUTE ON FUNCTION pg_catalog.txid_snapshot_xmax(txid_snapshot) TO backup;
+GRANT EXECUTE ON FUNCTION pg_catalog.pg_control_checkpoint() TO backup;
+COMMIT;
+```
+
+создал каталог для резервных копий:
+```
+root@haproxy:~# mkdir /home/pgbackups
+```
+
+Инициализировал его:
+```
+root@haproxy:~# pg_probackup-15 init -B /home/pgbackups
+INFO: Backup catalog '/home/pgbackups' successfully initialized
+```
+
+Сгенерировал пару ssh-ключей с пустой парольной фразой и добавил публичный
+ключ в `~/.ssh/authorized_keys` пользователю `postgres` на три узла
+кластера patroni для работы `pg_probackup` в удалённом режиме.
+
+Добавил определение копируемого экземпляра:
+```
+root@haproxy:~# pg_probackup-15 add-instance -B /home/pgbackups --instance hw6 --remote-host=pgsql3 \
+--remote-user=postgres -D /var/lib/postgresql/15/main
+INFO: Instance 'hw6' successfully initialized
+```
+
+Настроил конфигурацию параметров соединения и сжатия:
+```
+root@haproxy:~# pg_probackup-15 set-config -B /home/pgbackups --instance hw6 \
+  --compress-algorithm=zlib --compress-level=2 \
+  --remote-host=pgsql3 --remote-user=postgres -U backup -d otus
+```
+
+Настроил вход пользователя `backup` в кластер PostgreSQL на ведущий и
+резервный сервер без ввода пароля:
+```
+root@haproxy:~# echo "pgsql1:5432:*:backup:strong_backup_password" > ~/.pgpass
+root@haproxy:~# echo "pgsql2:5432:*:backup:strong_backup_password" >> ~/.pgpass
+root@haproxy:~# echo "pgsql3:5432:*:backup:strong_backup_password" >> ~/.pgpass
+root@haproxy:~# chmod 600 ~/.pgpass
+```
+
+Для резервного копирования пользователю backup необходимо настроить доступ к
+PostgreSQL к БД replication, для этого добавил эти настройки:
+```
+  pg_hba:
+    - host all all 127.0.0.1/32 trust
+    - host replication replicanto 10.0.0.0/8 md5
+    - host replication backup 10.0.0.0/8 md5
+    - host all all 10.0.0.0/8 md5
+```
+с помощью `patronictl -c /etc/patroni.yml edit-config`
+
+Сделал полную резервную копию с третьего узла кластера (реплика на текущий
+момент) в два параллельных потока:
+```
+root@haproxy:~# pg_probackup-15 backup -B /home/pgbackups --instance hw6 -b FULL -j 2 --stream --temp-slot
+INFO: Backup start, pg_probackup version: 2.5.12, instance: hw6, backup ID: RVR5UB, backup mode: FULL, wal mode: STREAM, remote: true, compress-algorithm: zlib, compress-level: 2
+INFO: This PostgreSQL instance was initialized with data block checksums. Data block corruption will be detected
+INFO: Backup RVR5UB is going to be taken from standby
+INFO: Database backup start
+INFO: wait for pg_backup_start()
+INFO: Wait for WAL segment /home/pgbackups/backups/hw6/RVR5UB/database/pg_wal/00000005000000000000000B to be streamed
+INFO: PGDATA size: 73MB
+INFO: Current Start LSN: 0/B3FD580, TLI: 5
+INFO: Start transferring data files
+INFO: Data files are transferred, time elapsed: 3s
+INFO: wait for pg_stop_backup()
+INFO: pg_stop backup() successfully executed
+INFO: stop_lsn: 0/C000060
+WARNING: Could not read WAL record at 0/C000060: invalid record length at 0/C000060: wanted 24, got 0
+INFO: Wait for LSN 0/C000060 in streamed WAL segment /home/pgbackups/backups/hw6/RVR5UB/database/pg_wal/00000005000000000000000C
+WARNING: Could not read WAL record at 0/C000060: invalid record length at 0/C000060: wanted 24, got 0
+WARNING: Could not read WAL record at 0/C000060: invalid record length at 0/C000060: wanted 24, got 0
+INFO: Getting the Recovery Time from WAL
+INFO: Failed to find Recovery Time in WAL, forced to trust current_timestamp
+INFO: Syncing backup files to disk
+INFO: Backup files are synced, time elapsed: 5s
+INFO: Validating backup RVR5UB
+INFO: Backup RVR5UB data files are valid
+INFO: Backup RVR5UB resident size: 53MB
+INFO: Backup RVR5UB completed
+```
+
+Сделал полную резервную копию с первого узла кластера (лидер на текущий
+момент) в два параллельных потока:
+```
+root@haproxy:~# pg_probackup-15 backup -B /home/pgbackups --instance hw6 -b FULL -j 2 --stream --temp-slot -h pgsql1
+INFO: Backup start, pg_probackup version: 2.5.12, instance: hw6, backup ID: RVR63P, backup mode: FULL, wal mode: STREAM, remote: true, compress-algorithm: zlib, compress-level: 2
+INFO: This PostgreSQL instance was initialized with data block checksums. Data block corruption will be detected
+INFO: Database backup start
+INFO: wait for pg_backup_start()
+INFO: Wait for WAL segment /home/pgbackups/backups/hw6/RVR63P/database/pg_wal/00000005000000000000000E to be streamed
+INFO: PGDATA size: 73MB
+INFO: Current Start LSN: 0/E000028, TLI: 5
+INFO: Start transferring data files
+INFO: Data files are transferred, time elapsed: 3s
+INFO: wait for pg_stop_backup()
+INFO: pg_stop backup() successfully executed
+INFO: stop_lsn: 0/E00DA08
+INFO: Getting the Recovery Time from WAL
+INFO: Syncing backup files to disk
+INFO: Backup files are synced, time elapsed: 6s
+INFO: Validating backup RVR63P
+INFO: Backup RVR63P data files are valid
+INFO: Backup RVR63P resident size: 37MB
+INFO: Backup RVR63P completed
+```
+Проверил наличие копий в каталоге резервных копий:
+```
+root@haproxy:~# pg_probackup-15 show -B /home/pgbackups --instance hw6 
+==================================================================================================================================
+ Instance  Version  ID      Recovery Time           Mode  WAL Mode  TLI    Time  Data   WAL  Zratio  Start LSN  Stop LSN   Status 
+==================================================================================================================================
+ hw6       15       RVR63P  2023-06-04 23:47:54+00  FULL  STREAM    5/0     12s  21MB  16MB    3.47  0/E000028  0/E00DA08  OK     
+ hw6       15       RVR5UB  2023-06-04 23:42:16+00  FULL  STREAM    5/0     17s  21MB  32MB    3.47  0/B3FD580  0/C000060  OK     
+```
+
+Резервное копирование настроено!
 
 ---
