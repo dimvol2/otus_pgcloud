@@ -349,7 +349,7 @@ gcloud compute ssh haproxy --zone=us-east4-a
 
 Установил haproxy 2.8:
 ```
-apt install -y --no-install-recommends software-properties-common &&
+root@haproxy:~# apt install -y --no-install-recommends software-properties-common &&
 add-apt-repository -y ppa:vbernat/haproxy-2.8 &&
 apt install -y haproxy=2.8.*
 ```
@@ -361,14 +361,14 @@ root@haproxy:~# apt update && apt upgrade -y -q && apt -y install postgresql-cli
 
 Проверил соединение с первой нодой кластера patroni через pgbouncer:
 ```
-bbc@haproxy:~$ psql -p 6432 -d otus -h 10.182.0.47 -U postgres
+root@haproxy:~$ psql -p 6432 -d otus -h 10.182.0.47 -U postgres
 Password for user postgres: 
 psql (12.15 (Ubuntu 12.15-0ubuntu0.20.04.1), server 15.3 (Ubuntu 15.3-1.pgdg20.04+1))
 WARNING: psql major version 12, server major version 15.
          Some psql features might not work.
 Type "help" for help.
 
-otus=# \q
+otus=#
 ```
 
 Сконфигурировал haproxy:
