@@ -32,7 +32,7 @@ for i in {1..3};
   done;
 ```
 
-Добавил конфиги на все три ноды:
+Добавил конфиги на все три узла:
 ```
 for i in {1..3};
   do gcloud compute ssh etcd$i \
@@ -272,7 +272,7 @@ for i in {1..3};
   done;
 ```
 
-На первой ноде кластера patroni (Leader на текущий момент) создал БД:
+На первом узле кластера patroni (Leader на текущий момент) создал БД:
 ```
 postgres@pgsql1:~$ psql -h 127.0.0.1
 psql (15.3 (Ubuntu 15.3-1.pgdg20.04+1))
@@ -359,7 +359,7 @@ apt install -y haproxy=2.8.*
 root@haproxy:~# apt update && apt upgrade -y -q && apt -y install postgresql-client-common postgresql-client
 ```
 
-Проверил соединение с первой нодой кластера patroni через pgbouncer:
+Проверил соединение с первым узлом кластера patroni через pgbouncer:
 ```
 root@haproxy:~$ psql -p 6432 -d otus -h 10.182.0.47 -U postgres
 Password for user postgres: 
@@ -488,6 +488,98 @@ otus=# \l
 
 haproxy настроен и работает.
 
+8. Тестируем отказоустойчивость.
+
+Посмотрел состояние кластера на текущий момент:
+```
+root@pgsql1:~# patronictl -c /etc/patroni.yml list
++ Cluster: patroni ----+---------+---------+----+-----------+
+| Member | Host        | Role    | State   | TL | Lag in MB |
++--------+-------------+---------+---------+----+-----------+
+| pgsql1 | 10.182.0.47 | Leader  | running |  3 |           |
+| pgsql2 | 10.182.0.46 | Replica | running |  3 |         0 |
+| pgsql3 | 10.182.0.48 | Replica | running |  3 |         0 |
++--------+-------------+---------+---------+----+-----------+
+```
+
+Перевёл лидера на третий узел кластера:
+```
+root@pgsql1:~# patronictl -c /etc/patroni.yml switchover --leader pgsql1 --candidate pgsql3 --scheduled now --force
+Current cluster topology
++ Cluster: patroni ----+---------+---------+----+-----------+
+| Member | Host        | Role    | State   | TL | Lag in MB |
++--------+-------------+---------+---------+----+-----------+
+| pgsql1 | 10.182.0.47 | Leader  | running |  3 |           |
+| pgsql2 | 10.182.0.46 | Replica | running |  3 |         0 |
+| pgsql3 | 10.182.0.48 | Replica | running |  3 |         0 |
++--------+-------------+---------+---------+----+-----------+
+2023-06-04 20:02:52.94051 Successfully switched over to "pgsql3"
++ Cluster: patroni ----+---------+---------+----+-----------+
+| Member | Host        | Role    | State   | TL | Lag in MB |
++--------+-------------+---------+---------+----+-----------+
+| pgsql1 | 10.182.0.47 | Replica | stopped |    |   unknown |
+| pgsql2 | 10.182.0.46 | Replica | running |  3 |         0 |
+| pgsql3 | 10.182.0.48 | Leader  | running |  3 |           |
++--------+-------------+---------+---------+----+-----------+
+```
+
+Посмотрел состояние кластера, переключение прошло:
+```
+root@pgsql1:~# patronictl -c /etc/patroni.yml list
++ Cluster: patroni ----+---------+---------+----+-----------+
+| Member | Host        | Role    | State   | TL | Lag in MB |
++--------+-------------+---------+---------+----+-----------+
+| pgsql1 | 10.182.0.47 | Replica | running |  4 |         0 |
+| pgsql2 | 10.182.0.46 | Replica | running |  4 |         0 |
+| pgsql3 | 10.182.0.48 | Leader  | running |  4 |           |
++--------+-------------+---------+---------+----+-----------+
+```
+
+Подключился через haproxy, проверил работу:
+```
+root@haproxy:~# psql -h 127.0.0.1 -d otus -U postgres -p 5432
+Password for user postgres: 
+psql (12.15 (Ubuntu 12.15-0ubuntu0.20.04.1), server 15.3 (Ubuntu 15.3-1.pgdg20.04+1))
+WARNING: psql major version 12, server major version 15.
+         Some psql features might not work.
+Type "help" for help.
+
+otus=# create database switchover;
+CREATE DATABASE
+```
+
+Останавливаю VM с третьим узлом кластера patroni:
+```
+bash-5.1$ gcloud compute instances stop pgsql3 --zone=us-west4-b
+Stopping instance(s) pgsql3...done.                                                                                                              
+```
+
+Посмотрел состояние кластера, узел исчез из кластера, новый лидер на
+первом узле:
+```
+root@pgsql1:~# patronictl -c /etc/patroni.yml list
++ Cluster: patroni ----+---------+---------+----+-----------+
+| Member | Host        | Role    | State   | TL | Lag in MB |
++--------+-------------+---------+---------+----+-----------+
+| pgsql1 | 10.182.0.47 | Leader  | running |  5 |           |
+| pgsql2 | 10.182.0.46 | Replica | running |  5 |         0 |
++--------+-------------+---------+---------+----+-----------+
+```
+
+Подключился через haproxy, проверил работу:
+```
+root@haproxy:~# psql -h 127.0.0.1 -d otus -U postgres -p 5432
+Password for user postgres: 
+psql (12.15 (Ubuntu 12.15-0ubuntu0.20.04.1), server 15.3 (Ubuntu 15.3-1.pgdg20.04+1))
+WARNING: psql major version 12, server major version 15.
+         Some psql features might not work.
+Type "help" for help.
+
+otus=# create database leader_node_out;
+CREATE DATABASE
+```
+
+Отказоустойчивость протестирована!
 
 
 ---
