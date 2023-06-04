@@ -104,7 +104,7 @@ for i in {1..3};
   done;
 ```
 
-Создал systemctl сервис patroni:
+Создал сервис patroni:
 ```
 for i in {1..3};
   do gcloud compute ssh pgsql$i \
@@ -212,7 +212,7 @@ root@pgsql1:~# patronictl -c /etc/patroni.yml list
 +--------+-------------+---------+---------+----+-----------+
 ```
 
-Кластер pgbouncer настроен и работает.
+Кластер patroni настроен и работает.
 
 6. На ВМ с кластерами PostgreSQL установил pgbouncer:
 ```
@@ -488,3 +488,4 @@ otus=# \l
 
 haproxy настроен и работает.
 
+---
