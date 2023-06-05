@@ -2,7 +2,7 @@
 # Курс `PostgreSQL Cloud Solutions`
 ### ДЗ #6 "Кластер Patroni" (Занятия "Кластер Patroni on-premise" 1 и 2)
 
-1. Создал и запустил три VM в GCE для кластера etcd:
+1. Создал и запустил три VM в GCE для кластера `etcd`:
 ```
 for i in {1..3};
   do gcloud compute instances create etcd$i \
@@ -12,7 +12,7 @@ for i in {1..3};
   done;  
 ```
 
-2. Установил на три VM etcd:
+2. Установил на три VM `etcd`:
 ```
 for i in {1..3};
   do gcloud compute ssh etcd$i \
@@ -23,7 +23,7 @@ for i in {1..3};
   done;
 ```
 
-Остановил сервисы etcd:
+Остановил сервисы `etcd`:
 ```
 for i in {1..3};
   do gcloud compute ssh etcd$i \
@@ -52,7 +52,7 @@ EOF
   done;
 ```
 
-Запустил сервисы etcd:
+Запустил сервисы `etcd`:
 ```
 for i in {1..3};
   do gcloud compute ssh etcd$i \
@@ -70,7 +70,7 @@ member f2aeb69aaf7ffcbf is healthy: got healthy result from http://etcd2:2379
 cluster is healthy
 ```
 
-Кластер etcd настроен и работает.
+Кластер `etcd` настроен и работает!
 
 3. Создал и запустил три VM в GCE для кластера PostgreSQL в другой зоне,
 чтобы обойти ограничение на 4 IP адреса:
@@ -94,7 +94,7 @@ for i in {1..3};
   done;
 ```
 
-5. Удалил дефолтный кластер PostgreSQL, установил patroni:
+5. Удалил дефолтный кластер PostgreSQL, установил `patroni`:
 ```
 for i in {1..3};
   do gcloud compute ssh pgsql$i --zone=us-west4-b \
@@ -104,7 +104,7 @@ for i in {1..3};
   done;
 ```
 
-Создал сервис patroni:
+Создал сервис `patroni`:
 ```
 for i in {1..3};
   do gcloud compute ssh pgsql$i \
@@ -129,7 +129,7 @@ EOF
   done;
 ```
 
-Распространил конфиг patroni:
+Распространил конфиг `patroni`:
 
 ```
 for i in {1..3};
@@ -192,7 +192,7 @@ EOF
   done;
 ```
 
-Запустил patroni и активировал его сервис:
+Запустил `patroni` и активировал его сервис:
 ```
 for i in {1..3};
   do gcloud compute ssh pgsql$i --zone=us-west4-b \
@@ -200,7 +200,7 @@ for i in {1..3};
   done;
 ```
 
-Проверил работу кластера patroni:
+Проверил работу кластера `patroni`:
 ```
 root@pgsql1:~# patronictl -c /etc/patroni.yml list
 + Cluster: patroni ----+---------+---------+----+-----------+
@@ -212,9 +212,9 @@ root@pgsql1:~# patronictl -c /etc/patroni.yml list
 +--------+-------------+---------+---------+----+-----------+
 ```
 
-Кластер patroni настроен и работает.
+Кластер `patroni` настроен и работает!
 
-6. На ВМ с кластерами PostgreSQL установил pgbouncer:
+6. На ВМ с кластерами PostgreSQL установил `pgbouncer`:
 ```
 for i in {1..3};
   do gcloud compute ssh pgsql$i --zone=us-west4-b \
@@ -252,7 +252,7 @@ postgres=# select passwd from pg_shadow where usename='postgres';
 (1 row)
 ```
 
-Добавил аутентификационную информацию для pgbouncer'а:
+Добавил аутентификационную информацию для `pgbouncer`:
 ```
 for i in {1..3};
   do gcloud compute ssh pgsql$i \
@@ -264,7 +264,7 @@ EOF
   done;
 ```
 
-Рестартовал сервис pgbouncer:
+Рестартовал сервис `pgbouncer`:
 ```
 for i in {1..3};
   do gcloud compute ssh pgsql$i --zone=us-west4-b \
@@ -272,7 +272,7 @@ for i in {1..3};
   done;
 ```
 
-На первом узле кластера patroni (Leader на текущий момент) создал БД:
+На первом узле кластера `patroni` (лидер на текущий момент) создал БД:
 ```
 postgres@pgsql1:~$ psql -h 127.0.0.1
 psql (15.3 (Ubuntu 15.3-1.pgdg20.04+1))
@@ -282,7 +282,8 @@ postgres=# create database otus;
 CREATE DATABASE
 ```
 
-Подготовил набор данных для тестирования и запустил тест, используя pgbouncer:
+Подготовил набор данных для тестирования и запустил тест, используя
+`pgbouncer`:
 
 ```
 postgres@pgsql1:~$ pgbench -p 6432 -i -d otus -h 10.182.0.47
@@ -313,7 +314,7 @@ average connection time = 6.732 ms
 tps = 93.552142 (including reconnection times)
 ```
 
-проверил работу консоли pgbouncer:
+Проверил работу консоли `pgbouncer`:
 
 
 ```
@@ -331,7 +332,7 @@ pgbouncer=# show stats_totals;
 (2 rows)
 ```
 
-pgbouncer настроен и работает.
+`pgbouncer` настроен и работает!
 
 
 7. Создал и запустил VM для haproxy:
@@ -359,7 +360,7 @@ apt install -y haproxy=2.8.*
 root@haproxy:~# apt update && apt upgrade -y -q && apt -y install postgresql-client-common postgresql-client
 ```
 
-Проверил соединение с первым узлом кластера patroni через pgbouncer:
+Проверил соединение с первым узлом кластера `patroni` через `pgbouncer`:
 ```
 root@haproxy:~$ psql -p 6432 -d otus -h 10.182.0.47 -U postgres
 Password for user postgres: 
@@ -486,7 +487,7 @@ otus=# \l
 (5 rows)
 ```
 
-haproxy настроен и работает.
+haproxy настроен и работает!
 
 8. Тестируем отказоустойчивость.
 
@@ -548,7 +549,7 @@ otus=# create database switchover;
 CREATE DATABASE
 ```
 
-Останавливаю VM с третьим узлом кластера patroni:
+Остановил VM с третьим узлом кластера `patroni`:
 ```
 bash-5.1$ gcloud compute instances stop pgsql3 --zone=us-west4-b
 Stopping instance(s) pgsql3...done.                                                                                                              
@@ -583,7 +584,7 @@ CREATE DATABASE
 
 9. Резервное копирование.
 
-Установил на узлы кластера patroni репозиторий софта резервного
+Установил на узлы кластера `patroni` репозиторий софта резервного
 копирования и восстановления `pg_probackup` и саму программу:
 ```
 for i in haproxy pgsql1 pgsql2 pgsql3;
@@ -596,13 +597,13 @@ for i in haproxy pgsql1 pgsql2 pgsql3;
   done;
 ```
 
-Создал в кластере patroni отдельную роль для резервного копирования:
+Создал в кластере `patroni` отдельную роль для резервного копирования:
 ```
 postgres=# CREATE ROLE backup LOGIN REPLICATION PASSWORD 'strong_backup_password';
 CREATE ROLE
 ```
 
-Настроил права доступа в БД otus для роли `backup` согласно документации
+Настроил права доступа в БД `otus` для роли `backup` согласно документации
 `pg_probackup`:
 
 ```
@@ -636,7 +637,7 @@ INFO: Backup catalog '/home/pgbackups' successfully initialized
 
 Сгенерировал пару ssh-ключей с пустой парольной фразой и добавил публичный
 ключ в `~/.ssh/authorized_keys` пользователю `postgres` на три узла
-кластера patroni для работы `pg_probackup` в удалённом режиме.
+кластера `patroni` для работы `pg_probackup` в удалённом режиме.
 
 Добавил определение копируемого экземпляра:
 ```
