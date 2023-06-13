@@ -155,6 +155,7 @@ INSERT 0 1
 Удалил:
 ```
 kubectl delete -f postgres.yaml
+```
 
 Развернул PostgreSQL через манифест заново:
 ```
