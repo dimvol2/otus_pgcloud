@@ -43,7 +43,7 @@ root@hw8:~# apt update && apt install -y postgresql-15
 postgres@hw8:~$ cp -av /tmp/taxi /tmp/taxi_local
 ```
 
-Создал БД и таблицу для загружаемых данных:
+Создал БД `taxi` и в ней таблицу `taxi_trips` для загружаемых данных:
 ```
 postgres@hw8:~$ psql 
 psql (15.3 (Ubuntu 15.3-1.pgdg18.04+1))
