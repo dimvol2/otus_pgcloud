@@ -32,10 +32,10 @@ curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-
 sudo install minikube-linux-amd64 /usr/local/bin/minikube
 ```
 
-
+Запустил `minikube`:
+```
 minikube start
-minikube dashboard ?? howto forward local port outside (kubectl port-forward
-??)
+```
 
 3. Создал namespace и прописал его по умолчанию:
 ```
@@ -50,11 +50,7 @@ kubectl config set-context --current --namespace=kub-hw7
 bbc@hw7:~$ eval $(minikube -p minikube docker-env)
 ```
 
-gcloud compute scp les7-8/les2/postgres/postgres.yaml hw7:
-
-joe postgres.yaml (change version)
-
-Создал манифест:
+С помощью манифеста:
 ```
 cat >>postgres.yaml<<EOF
 apiVersion: v1
@@ -115,11 +111,10 @@ spec:
 EOF
 ```
 
-Запустил PostgreSQL через манифест:
+Развернул PostgreSQL:
 ```
 bbc@hw7:~$ kubectl apply -f postgres.yaml
 ```
-
 
 ```
 bbc@hw7:~$ minikube service postgres -n kub-hw7 --url
