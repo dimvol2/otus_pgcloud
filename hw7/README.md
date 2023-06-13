@@ -37,23 +37,97 @@ minikube start
 minikube dashboard ?? howto forward local port outside (kubectl port-forward
 ??)
 
-
+3. Создал namespace и прописал его по умолчанию:
+```
 bbc@hw7:~$ kubectl create namespace kub-hw7
 namespace/kub-hw7 created
 
 kubectl config set-context --current --namespace=kub-hw7
+```
 
+Настроил переменные окружения для работы с контейнерами в `minikube`:
+```
 bbc@hw7:~$ eval $(minikube -p minikube docker-env)
-
+```
 
 gcloud compute scp les7-8/les2/postgres/postgres.yaml hw7:
 
 joe postgres.yaml (change version)
 
+Создал манифест:
+```
+cat >>postgres.yaml<<EOF
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  labels:
+    app: postgres
+spec:
+  type: NodePort
+  ports:
+   - port: 5432
+  selector:
+    app: postgres
 
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-statefulset
+spec:
+  serviceName: "postgres"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:14.8
+        ports:
+        - containerPort: 5432
+          name: postgredb
+        env:
+          - name: POSTGRES_DB
+            value: myapp
+          - name: POSTGRES_USER
+            value: myuser
+          - name: POSTGRES_PASSWORD
+            value: passwd
+        volumeMounts:
+        - name: postgredb
+          mountPath: /var/lib/postgresql/data
+          subPath: postgres
+  volumeClaimTemplates:
+  - metadata:
+      name: postgredb
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: standard
+      resources:
+        requests:
+          storage: 1Gi
+EOF
+```
+
+Запустил PostgreSQL через манифест:
+```
+bbc@hw7:~$ kubectl apply -f postgres.yaml
+```
+
+
+```
 bbc@hw7:~$ minikube service postgres -n kub-hw7 --url
 http://192.168.49.2:31068
+```
 
+Соединился, проверил версию:
+```
 bbc@hw7:~$ psql -h 192.168.49.2 -p 31068 -d myapp -U myuser 
 Password for user myuser: 
 psql (12.15 (Ubuntu 12.15-0ubuntu0.20.04.1), server 14.8 (Debian 14.8-1.pgdg110+1))
@@ -66,8 +140,10 @@ myapp=# select version();
 -----------------------------------------------------------------------------------------------------------------------------
  PostgreSQL 14.8 (Debian 14.8-1.pgdg110+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 10.2.1-6) 10.2.1 20210110, 64-bit
 (1 row)
+```
 
-
+Создал БД и таблицу в ней, занёс тестовую запись:
+```
 myapp=# create database hw7;
 CREATE DATABASE
 myapp=# \c hw7
@@ -77,22 +153,28 @@ WARNING: psql major version 12, server major version 14.
 You are now connected to database "hw7" as user "myuser".
 hw7=# create table t(s text);
 CREATE TABLE
-hw7=# insert into t values ("pg with kubernetes manifest");
-ERROR:  column "pg with kubernetes manifest" does not exist
-LINE 1: insert into t values ("pg with kubernetes manifest");
-                              ^
 hw7=# insert into t values ('pg with kubernetes manifest');
 INSERT 0 1
-hw7=# 
+```
 
+Удалил:
+```
 kubectl delete -f postgres.yaml
+
+Развернул PostgreSQL через манифест заново:
+```
 bbc@hw7:~$ kubectl apply -f postgres.yaml
 service/postgres created
 statefulset.apps/postgres-statefulset created
+```
 
+```
 bbc@hw7:~$ minikube service postgres -n kub-hw7 --url
 http://192.168.49.2:30075
+```
 
+Соединился, проверил наличие данных в таблице:
+```
 bbc@hw7:~$ psql -h 192.168.49.2 -p 30075 -d myapp -U myuser 
 Password for user myuser: 
 psql (12.15 (Ubuntu 12.15-0ubuntu0.20.04.1), server 14.8 (Debian 14.8-1.pgdg110+1))
@@ -110,7 +192,4 @@ hw7=# select * from t;
 -----------------------------
  pg with kubernetes manifest
 (1 row)
-
-
-root@hw7:~# snap install helm --classic
-helm 3.10.1 from Snapcrafters✪ installed
+```
