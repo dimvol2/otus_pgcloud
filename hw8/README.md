@@ -255,11 +255,17 @@ bbc@hw8:~$ gpssh-exkeys -f hostlist_singlenode
 
 [INFO] completed successfully
 ```
-///20230613:00:10:52:015733 gpinitsystem:hw8:bbc-[WARN]:-Host hw8 open files limit is 1024 should be >= 65535
 
+Запустил кластер Greenplum:
+```
+gpinitsystem -c gpinitsystem_singlenode
+```
 
+Добавил переменную окружения согласно рекомендациям, выданным в лог запуска:
+```
+echo "source /opt/greenplum-db-6.24.4/greenplum_path.sh" >> ~/.bashrc
 echo "export MASTER_DATA_DIRECTORY=/home/bbc/master/gpsne-1" >> ~/.bashrc 
-
+```
 
 Создал БД, подключился и проверил версию установленной СУБД:
 ```
@@ -316,7 +322,7 @@ HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sur
 CREATE TABLE
 ```
 
-Загрузил в неё данные из бакета по поездкам чикагского такси:
+Загрузил в неё данные из бакета с поездками чикагского такси:
 ```
 time for f in /tmp/taxi_local/taxi*
 do
