@@ -1,24 +1,36 @@
+##### otus_pgcloud
+# Курс `PostgreSQL Cloud Solutions`
+### ДЗ #7 "Постгрес в minikube" (Занятие "Введение в Kubernetes")
 
+1. Создал и запустил VM в GCE (Ubuntu 20.04 LTS):
+```
+gcloud compute instances create hw7 --machine-type=e2-medium \
+--image-project=ubuntu-os-cloud --image=ubuntu-2004-focal-v20230605 --zone=us-west4-b
+```
 
+2. Вошёл на VM:
+```
+gcloud compute ssh hw7 --zone=us-west4-b
+```
 
-curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
-bash-5.1$ su -c "install minikube-linux-amd64 /usr/local/bin/minikube"
-
-gcloud compute instances create hw7  --machine-type=e2-medium  --image-project=ubuntu-os-cloud --image=ubuntu-2004-focal-v20230605 --zone=us-west4-b
-
-gcloud compute ssh hw7
-root@hw7:~# apt update && apt install docker.io -y && apt install joe elinks -y
+Обновил базу пакетов, установил докер:
+```
+root@hw7:~# apt update && apt install docker.io -y
 sudo usermod -aG docker $USER && newgrp docker
+```
 
+Установил клиент PostgreSQL:
+```
 root@hw7:~# apt -y install postgresql-client-common postgresql-client
+```
 
-
+Установил последние версии `minikube` и `kubectl`:
+```
 curl -LO https://dl.k8s.io/release/`curl -LS https://dl.k8s.io/release/stable.txt`/bin/linux/amd64/kubectl
 install kubectl  /usr/local/bin/
-
 curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
 sudo install minikube-linux-amd64 /usr/local/bin/minikube
-
+```
 
 
 minikube start
