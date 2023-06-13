@@ -25,21 +25,22 @@ root@hw8:~# curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key
 root@hw8:~# apt update && apt install fuse gcsfuse -y && apt upgrade -y
 ```
 
-Смонтировал каталог с набором данных в локальную директорию с read-only доступом для всех пользователей
-и сделал локальную копию данных:
+Смонтировал каталог с набором данных в локальную директорию с read-only доступом для всех пользователей:
 ```
 root@hw8:~# mkdir /tmp/taxi && gcsfuse -o allow_other,ro chicago10 /tmp/taxi
 I0611 18:27:20.150658 2023/06/11 18:27:20.150621 Start gcsfuse/0.42.5 (Go version go1.20.3) for app "" using mount point: /home/bbc/data
-postgres@hw8:~$ cp -av /tmp/taxi /tmp/taxi_local
-
 ```
 
 3. Установил PostgreSQL:
 ```
 root@hw8:~# echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list
 root@hw8:~# wget -qO- https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo tee /etc/apt/trusted.gpg.d/pgdg.asc &>/dev/null
-root@hw8:~# apt update
-root@hw8:~# apt install -y postgresql-15
+root@hw8:~# apt update && apt install -y postgresql-15
+```
+
+Сделал локальную копию данных:
+```
+postgres@hw8:~$ cp -av /tmp/taxi /tmp/taxi_local
 ```
 
 Создал БД и таблицу для загружаемых данных:
