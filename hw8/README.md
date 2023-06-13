@@ -232,9 +232,9 @@ declare -a DATA_DIRECTORY=(/home/bbc/primary /home/bbc/primary)
 MASTER_PORT=5433
 MASTER_DIRECTORY=/home/bbc/master
 EOF
-```
 
-```
+bbc@hw8:~$ mkdir ~/master ~/primary
+
 bbc@hw8:~$ cat >>./hostlist_singlenode<<EOF
 hw8
 EOF
