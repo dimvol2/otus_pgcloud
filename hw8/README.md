@@ -3,7 +3,8 @@
 ### ДЗ #8 "Разворачиваем и настраиваем БД с большими данными" (Занятие "Работа с большим объемом реальных данных")
 
 1. Создал VM в GCE hw8 (Ubuntu 18.04 LTS):
-```gcloud compute instances create hw8 --machine-type=e2-standard-2 \
+```
+gcloud compute instances create hw8 --machine-type=e2-standard-2 \
 --image-project=ubuntu-os-cloud --image=ubuntu-1804-bionic-v20230605 \
 --boot-disk-size=200GB --boot-disk-type=pd-ssd --zone=us-east4-a
 ```
@@ -19,13 +20,10 @@ root@hw8:~# echo "deb https://packages.cloud.google.com/apt gcsfuse-$(lsb_releas
 root@hw8:~# curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
 ```
 
-установил ПО для работы с бакетами и обновил ОС:
+2. Установил ПО для работы с бакетами и обновил ОС:
 ```
 root@hw8:~# apt update && apt install fuse gcsfuse -y && apt upgrade -y
 ```
-
-НЕНАДО ??? надо ли?
-gcloud auth application-default login
 
 Смонтировал каталог с набором данных в локальную директорию с read-only доступом для всех пользователей
 и сделал локальную копию данных:
@@ -36,7 +34,7 @@ postgres@hw8:~$ cp -av /tmp/taxi /tmp/taxi_local
 
 ```
 
-Установил PostgreSQL:
+3. Установил PostgreSQL:
 ```
 root@hw8:~# echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list
 root@hw8:~# wget -qO- https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo tee /etc/apt/trusted.gpg.d/pgdg.asc &>/dev/null
@@ -141,8 +139,7 @@ Time: 190244.783 ms (03:10.245)
 
 Плюс 3 минуты, в итоге вся процедура на 32% дольше, чем заливка данных сразу в журналируемую таблицу.
 
-
-Настроил PostgreSQL под текущую конфигурацию VM (2 CPU, RAM 8GB, SSD):
+4. Настроил PostgreSQL под текущую конфигурацию VM (2 CPU, RAM 8GB, SSD):
 ```
 postgres@hw8:~$ cat >> /var/lib/postgresql/15/main/postgresql.auto.conf<<EOF
 # Memory Settings
@@ -166,17 +163,7 @@ root@hw8:~# systemctl restart postgresql
 root@hw8:~# apt install pgloader
 ```
 
-/*
-Установил `pg_bulkload`:
-```
-root@hw8:~# apt install make gcc postgresql-server-dev-15 -y
-bbc@hw8:~$ curl -L https://github.com/ossc-db/pg_bulkload/releases/download/VERSION3_1_20/pg_bulkload-3.1.20.tar.gz -o pg_bulkload-3.1.20.tar.gz
-bbc@hw8:~$ tar axf pg_bulkload-3.1.20.tar.gz 
-bbc@hw8:~$ cd pg_bulkload-3.1.20/
-```
-*/
-
-Протестировал запрос:
+Протестировал аналитический запрос (пару раз для статистики):
 ```
 taxi=# \timing 
 Timing is on.
@@ -225,16 +212,16 @@ Time: 39759.097 ms (00:39.759)
 Время выполнения запроса около 38s.
 
 
+5. Установил Greenplum DB [по
+инструкции](https://greenplum.org/install-greenplum-oss-on-ubuntu/).
 
-
-
-
-Установил Greenplum DB по инструкции (https://greenplum.org/install-greenplum-oss-on-ubuntu/):
+Добавил репозиторий:
 ```
 root@hw8:~# add-apt-repository ppa:greenplum/db -y
 root@hw8:~# apt update && apt install greenplum-db-6 -y
 ```
 
+Настроил переменные окружения и параметры системы:
 ```
 bbc@hw8:~$ source /opt/greenplum-db-6.24.4/greenplum_path.sh
 
@@ -250,8 +237,8 @@ EOF
 
 ```
 bbc@hw8:~$ cat >>./hostlist_singlenode<<EOF
-> hw8
-> EOF
+hw8
+EOF
 ```
 
 ```
