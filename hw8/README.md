@@ -260,6 +260,9 @@ bbc@hw8:~$ gpssh-exkeys -f hostlist_singlenode
 
 echo "export MASTER_DATA_DIRECTORY=/home/bbc/master/gpsne-1" >> ~/.bashrc 
 
+
+Создал БД, подключился и проверил версию установленной СУБД:
+```
 bbc@hw8:~$ createdb taxi -p 5433
 
 bbc@hw8:~$ psql -p 5433 -d taxi
@@ -274,7 +277,10 @@ taxi=# select version();
  PostgreSQL 9.4.26 (Greenplum Database 6.24.4 build commit:d1b94743b5e665888e0a72c921daf04bdbe77528 Open Source) on x86_64-unknown-linux-gnu, com
 piled by gcc (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0, 64-bit compiled on Jun  7 2023 19:23:04
 (1 row)
+```
 
+Создал колоночную таблицу:
+```
 taxi=# create table taxi_trips (
 unique_key text, 
 taxi_id text, 
@@ -308,8 +314,10 @@ WITH (
 NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'unique_key' as the Greenplum Database data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
 CREATE TABLE
+```
 
-
+Загрузил в неё данные из бакета по поездкам чикагского такси:
+```
 time for f in /tmp/taxi_local/taxi*
 do
         echo -e "Processing $f file..."
@@ -324,9 +332,12 @@ COPY 629855
 real	4m41.361s
 user	0m15.615s
 sys	0m37.629s
-
-
 ```
+
+Выполнил пару раз аналитический запрос:
+```
+taxi=# \timing
+Timing is on.
 taxi=# SELECT payment_type, round(sum(tips)/sum(trip_total)*100, 0) + 0 as tips_percent, count(*) as c
 taxi-# FROM taxi_trips
 taxi-# group by payment_type
