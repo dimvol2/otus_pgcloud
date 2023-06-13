@@ -137,22 +137,15 @@ myapp=# select version();
 (1 row)
 ```
 
-Создал БД и таблицу в ней, занёс тестовую запись:
+Создал таблицу, занёс в неё тестовую запись:
 ```
-myapp=# create database hw7;
-CREATE DATABASE
-myapp=# \c hw7
-psql (12.15 (Ubuntu 12.15-0ubuntu0.20.04.1), server 14.8 (Debian 14.8-1.pgdg110+1))
-WARNING: psql major version 12, server major version 14.
-         Some psql features might not work.
-You are now connected to database "hw7" as user "myuser".
-hw7=# create table t(s text);
+myapp=# create table t(s text);
 CREATE TABLE
-hw7=# insert into t values ('pg with kubernetes manifest');
+myapp=# insert into t values ('pg with kubernetes manifest');
 INSERT 0 1
 ```
 
-Удалил:
+4. Удалил:
 ```
 kubectl delete -f postgres.yaml
 ```
@@ -178,14 +171,11 @@ WARNING: psql major version 12, server major version 14.
          Some psql features might not work.
 Type "help" for help.
 
-myapp=# \c hw7
-psql (12.15 (Ubuntu 12.15-0ubuntu0.20.04.1), server 14.8 (Debian 14.8-1.pgdg110+1))
-WARNING: psql major version 12, server major version 14.
-         Some psql features might not work.
-You are now connected to database "hw7" as user "myuser".
-hw7=# select * from t;
+myapp=# select * from t;
               s              
 -----------------------------
  pg with kubernetes manifest
 (1 row)
 ```
+
+Данные сохранились
