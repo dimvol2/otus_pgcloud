@@ -159,13 +159,11 @@ EOF
 root@hw8:~# systemctl restart postgresql
 ```
 
-Установил `pgloader`:
-```
-root@hw8:~# apt install pgloader
-```
-
 Протестировал аналитический запрос (пару раз для статистики):
 ```
+postgres@hw8:~$ psql -d taxi
+psql (15.3 (Ubuntu 15.3-1.pgdg18.04+1))
+Type "help" for help.
 taxi=# \timing 
 Timing is on.
 taxi=# SELECT payment_type, round(sum(tips)/sum(trip_total)*100, 0) + 0 as tips_percent, count(*) as c
