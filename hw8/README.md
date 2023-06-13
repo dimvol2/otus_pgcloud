@@ -84,7 +84,7 @@ CREATE TABLE
 
 Залил данные в таблицу:
 ```
-time for f in /tmp/taxi_local/taxi*
+bbc@hw8:~$ time for f in /tmp/taxi_local/taxi*
 do
         echo -e "Processing $f file..."
         psql -d taxi -U postgres -c "\\COPY taxi_trips FROM PROGRAM 'cat $f' CSV HEADER"
@@ -112,7 +112,7 @@ ALTER TABLE
 
 Повторил загрузку данных в таблицу:
 ```
-time for f in /tmp/taxi_local/taxi*
+bbc@hw8:~$ time for f in /tmp/taxi_local/taxi*
 do
         echo -e "Processing $f file..."
         psql -d taxi -U postgres -c "\\COPY taxi_trips FROM PROGRAM 'cat $f' CSV HEADER"
@@ -257,13 +257,13 @@ bbc@hw8:~$ gpssh-exkeys -f hostlist_singlenode
 
 Запустил кластер Greenplum:
 ```
-gpinitsystem -c gpinitsystem_singlenode
+bbc@hw8:~$ gpinitsystem -c gpinitsystem_singlenode
 ```
 
 Добавил переменную окружения согласно рекомендациям, выданным в лог запуска:
 ```
-echo "source /opt/greenplum-db-6.24.4/greenplum_path.sh" >> ~/.bashrc
-echo "export MASTER_DATA_DIRECTORY=/home/bbc/master/gpsne-1" >> ~/.bashrc 
+bbc@hw8:~$ echo "source /opt/greenplum-db-6.24.4/greenplum_path.sh" >> ~/.bashrc
+bbc@hw8:~$ echo "export MASTER_DATA_DIRECTORY=/home/bbc/master/gpsne-1" >> ~/.bashrc 
 ```
 
 Создал БД, подключился и проверил версию установленной СУБД:
@@ -323,7 +323,7 @@ CREATE TABLE
 
 Загрузил в неё данные из бакета с поездками чикагского такси:
 ```
-time for f in /tmp/taxi_local/taxi*
+bbc@hw8:~$ time for f in /tmp/taxi_local/taxi*
 do
         echo -e "Processing $f file..."
         psql -d taxi -p 5433 -c "\\COPY taxi_trips FROM PROGRAM 'cat $f' CSV HEADER"
