@@ -37,12 +37,12 @@ sudo install minikube-linux-amd64 /usr/local/bin/minikube
 minikube start
 ```
 
-3. Создал namespace и прописал его по умолчанию:
+Создал namespace и прописал его по умолчанию:
 ```
 bbc@hw7:~$ kubectl create namespace kub-hw7
 namespace/kub-hw7 created
 
-kubectl config set-context --current --namespace=kub-hw7
+bbc@hw7:~$ kubectl config set-context --current --namespace=kub-hw7
 ```
 
 Настроил переменные окружения для работы с контейнерами в `minikube`:
@@ -50,7 +50,7 @@ kubectl config set-context --current --namespace=kub-hw7
 bbc@hw7:~$ eval $(minikube -p minikube docker-env)
 ```
 
-С помощью манифеста:
+3. С помощью манифеста:
 ```
 cat >>postgres.yaml<<EOF
 apiVersion: v1
@@ -111,17 +111,18 @@ spec:
 EOF
 ```
 
-Развернул PostgreSQL:
+развернул PostgreSQL:
 ```
 bbc@hw7:~$ kubectl apply -f postgres.yaml
 ```
 
+Получил адрес запущенного сервиса:
 ```
 bbc@hw7:~$ minikube service postgres -n kub-hw7 --url
 http://192.168.49.2:31068
 ```
 
-Соединился, проверил версию:
+Соединился с ним, проверил версию PostgreSQL:
 ```
 bbc@hw7:~$ psql -h 192.168.49.2 -p 31068 -d myapp -U myuser 
 Password for user myuser: 
@@ -145,24 +146,25 @@ myapp=# insert into t values ('pg with kubernetes manifest');
 INSERT 0 1
 ```
 
-4. Удалил:
+4. Удалил PostgreSQL:
 ```
 kubectl delete -f postgres.yaml
 ```
 
-Развернул PostgreSQL через манифест заново:
+Развернул его через манифест заново:
 ```
 bbc@hw7:~$ kubectl apply -f postgres.yaml
 service/postgres created
 statefulset.apps/postgres-statefulset created
 ```
 
+Узнал адрес сервиса:
 ```
 bbc@hw7:~$ minikube service postgres -n kub-hw7 --url
 http://192.168.49.2:30075
 ```
 
-Соединился, проверил наличие данных в таблице:
+Подключился к СУБД и убедился в наличии данных в тестовой таблице `t`:
 ```
 bbc@hw7:~$ psql -h 192.168.49.2 -p 30075 -d myapp -U myuser 
 Password for user myuser: 
