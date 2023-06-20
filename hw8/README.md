@@ -211,8 +211,7 @@ Time: 39759.097 ms (00:39.759)
 Время выполнения запроса около 38s.
 
 
-5. Установил Greenplum DB [по
-инструкции](https://greenplum.org/install-greenplum-oss-on-ubuntu/).
+5. Установил Greenplum DB, пользуясь [инструкцией](https://greenplum.org/install-greenplum-oss-on-ubuntu/).
 
 Добавил репозиторий:
 ```
@@ -255,7 +254,7 @@ bbc@hw8:~$ gpssh-exkeys -f hostlist_singlenode
 [INFO] completed successfully
 ```
 
-Запустил кластер Greenplum:
+Инициализировал кластер Greenplum:
 ```
 bbc@hw8:~$ gpinitsystem -c gpinitsystem_singlenode
 ```
@@ -386,3 +385,96 @@ Time: 13196.389 ms
 ```
 
 Время выполнения запроса около 13s - в три раза быстрее, чем в PostgreSQL!
+
+Создал колоночную таблицу с распределением данных по столбцу `payment_type`:
+```
+taxi=# create table taxi_trips_by_payment_type (
+unique_key text, 
+taxi_id text, 
+trip_start_timestamp TIMESTAMP, 
+trip_end_timestamp TIMESTAMP, 
+trip_seconds bigint, 
+trip_miles numeric, 
+pickup_census_tract bigint, 
+dropoff_census_tract bigint, 
+pickup_community_area bigint, 
+dropoff_community_area bigint, 
+fare numeric, 
+tips numeric, 
+tolls numeric, 
+extras numeric, 
+trip_total numeric, 
+payment_type text, 
+company text, 
+pickup_latitude numeric, 
+pickup_longitude numeric, 
+pickup_location text, 
+dropoff_latitude numeric, 
+dropoff_longitude numeric, 
+dropoff_location text)
+WITH (
+    appendonly = true,
+    orientation = column,
+    compresstype = zstd,
+    compresslevel = 1
+)
+DISTRIBUTED BY (payment_type);
+CREATE TABLE
+```
+
+Наполнил данными в новую таблицу:
+```
+bbc@hw8:~$ time for f in /tmp/taxi_local/taxi*; do         echo -e "Processing $f file...";         psql -d taxi -p 5433 -c "\\COPY taxi_trips_by_payment_type FROM PROGRAM 'cat $f' CSV HEADER"; done
+Processing /tmp/taxi_local/taxi.csv.000000000000 file...
+COPY 668818
+..
+Processing /tmp/taxi_local/taxi.csv.000000000039 file...
+COPY 629855
+
+real	5m21.604s
+user	0m16.839s
+sys	0m35.408s
+```
+
+Проверил скорость выполнения запроса:
+```
+taxi=# \timing 
+Timing is on.
+taxi=# SELECT payment_type, round(sum(tips)/sum(trip_total)*100, 0) + 0 as tips_percent, count(*) as c FROM taxi_trips_by_payment_type group by payment_type order by 3;
+ payment_type | tips_percent |    c     
+--------------+--------------+----------
+ Prepaid      |            0 |        6
+ Way2ride     |           12 |       27
+ Split        |           17 |      180
+ Dispute      |            0 |     5596
+ Pcard        |            2 |    13575
+ No Charge    |            0 |    26294
+ Mobile       |           16 |    61256
+ Prcard       |            1 |    86053
+ Unknown      |            0 |   103869
+ Credit Card  |           17 |  9224956
+ Cash         |            0 | 17231871
+(11 rows)
+
+Time: 12962.838 ms
+taxi=# SELECT payment_type, round(sum(tips)/sum(trip_total)*100, 0) + 0 as tips_percent, count(*) as c FROM taxi_trips_by_payment_type group by payment_type order by 3;
+ payment_type | tips_percent |    c     
+--------------+--------------+----------
+ Prepaid      |            0 |        6
+ Way2ride     |           12 |       27
+ Split        |           17 |      180
+ Dispute      |            0 |     5596
+ Pcard        |            2 |    13575
+ No Charge    |            0 |    26294
+ Mobile       |           16 |    61256
+ Prcard       |            1 |    86053
+ Unknown      |            0 |   103869
+ Credit Card  |           17 |  9224956
+ Cash         |            0 | 17231871
+(11 rows)
+
+Time: 12946.678 ms
+
+Скорость та же, что и в случае распределения данных между сегментами кластера.
+Видимо ограничивается другими факторами.
+
