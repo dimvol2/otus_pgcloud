@@ -54,12 +54,13 @@ postgres=# show shared_buffers;
 ----------------
  128MB
 (1 row)
-```
+
 postgres=# show work_mem ;
  work_mem 
 ----------
  4MB
 (1 row)
+```
 
 Запустил тест `pgbench` трижды:
 ```
