@@ -84,7 +84,7 @@ CREATE TABLE
 
 Залил данные в таблицу:
 ```
-bbc@hw8:~$ time for f in /tmp/taxi_local/taxi*
+postgres@hw8:~$ time for f in /tmp/taxi_local/taxi*
 do
         echo -e "Processing $f file..."
         psql -d taxi -U postgres -c "\\COPY taxi_trips FROM PROGRAM 'cat $f' CSV HEADER"
@@ -112,7 +112,7 @@ ALTER TABLE
 
 Повторил загрузку данных в таблицу:
 ```
-bbc@hw8:~$ time for f in /tmp/taxi_local/taxi*
+postgres@hw8:~$ time for f in /tmp/taxi_local/taxi*
 do
         echo -e "Processing $f file..."
         psql -d taxi -U postgres -c "\\COPY taxi_trips FROM PROGRAM 'cat $f' CSV HEADER"
@@ -237,9 +237,7 @@ bbc@hw8:~$ mkdir ~/master ~/primary
 bbc@hw8:~$ cat >>./hostlist_singlenode<<EOF
 hw8
 EOF
-```
 
-```
 bbc@hw8:~$ gpssh-exkeys -f hostlist_singlenode 
 [STEP 1 of 5] create local ID and authorize on local host
 
@@ -474,7 +472,7 @@ taxi=# SELECT payment_type, round(sum(tips)/sum(trip_total)*100, 0) + 0 as tips_
 (11 rows)
 
 Time: 12946.678 ms
-
-Скорость та же, что и в случае распределения данных между сегментами кластера.
-Видимо ограничивается другими факторами.
+```
+Скорость такая же, что и в случае распределения данных между сегментами кластера
+по столбцу `unique_key`.
 
