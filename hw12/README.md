@@ -18,7 +18,7 @@ for i in {1..2};
     --command='sudo groupadd gpadmin && \
     sudo useradd gpadmin -r -m -g gpadmin && \
     echo gpadmin:gpadmin123 | sudo chpasswd && \
-    sudo usermod -aG sudo gpadmin &&
+    sudo usermod -aG sudo gpadmin && \
     sudo -u gpadmin ssh-keygen -t rsa -b 4096 -q -f /home/gpadmin/.ssh/id_rsa -N ""' \
     --zone=us-east4-a &\
   done;
@@ -57,13 +57,13 @@ for i in {1..2};
     --zone=us-east4-a &\
   done;
 ```
-Обновил список пакетов, сами пакеты и установил Greenplum:
+Обновил список пакетов, сами пакеты, установил sshpass и Greenplum:
 ```
 for i in {1..2};
   do gcloud compute ssh gp$i \
     --command='sudo apt update && \
     sudo apt upgrade -y -q && \
-    sudo apt -y install greenplum-db-6' \
+    sudo apt -y install sshpass greenplum-db-6' \
     --zone=us-east4-a &\
   done;
 ```
@@ -95,6 +95,14 @@ for i in {1..2};
   do gcloud compute ssh gp$i \
     --command='sudo sed -i s@"PasswordAuthentication no"@"PasswordAuthentication yes"@ /etc/ssh/sshd_config && \
     sudo systemctl restart ssh' \
+    --zone=us-east4-a &\
+  done;
+```
+Раскидал ssh-ключи по виртуальным машинам:
+```
+for i in {1..2};
+  do gcloud compute ssh gp$i \
+    --command='sudo su -c "for j in {1..2}; do SSHPASS=gpadmin123 sshpass -v -e ssh-copy-id -o StrictHostKeyChecking=no gp$j & done" gpadmin' \
     --zone=us-east4-a &\
   done;
 ```
