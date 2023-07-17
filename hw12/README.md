@@ -106,7 +106,24 @@ for i in {1..4};
     --zone=us-east4-a &\
   done;
 ```
-
+- Создал директорию для данных на master- и standby-нодах с владельцем gpadmin:
+```
+for i in {1..2};
+  do gcloud compute ssh gp$i \
+    --command='sudo mkdir -p /data/master && \
+    sudo chown -R gpadmin.gpadmin /data/master' \
+    --zone=us-east4-a &\
+  done;
+```
+- Подготовил структуру директорий на сегментах:
+```
+for i in {3..4};
+  do gcloud compute ssh gp$i \
+    --command='sudo mkdir -p /data/primary /data/mirror && \
+    sudo chown -R gpadmin.gpadmin /data/primary /data/mirror' \
+    --zone=us-east4-a &\
+  done;
+```
 
 
 
