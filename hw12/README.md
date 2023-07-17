@@ -11,7 +11,7 @@ for i in {1..4};
     --image-project=ubuntu-os-cloud --image=ubuntu-2004-focal-v20230628 &\
   done;
 ```
-Добавил пользователя `gpadmin` и создал пару ssh-ключей:
+- Добавил пользователя `gpadmin` и создал пару ssh-ключей:
 ```
 for i in {1..4};
   do gcloud compute ssh gp$i \
@@ -23,7 +23,7 @@ for i in {1..4};
     --zone=us-east4-a &\
   done;
 ```
-Добавил репозиторий Greenplum от Ubuntu версии 18.04
+- Добавил репозиторий Greenplum от Ubuntu версии 18.04
 ```
 for i in {1..4};
   do gcloud compute ssh gp$i \
@@ -35,7 +35,7 @@ EOF
     --zone=us-east4-a & \
   done;
 ```
-Закрепил этот репозиторий в качестве источника пакетов для Greenplum:
+- Закрепил этот репозиторий в качестве источника пакетов для Greenplum:
 ```
 for i in {1..4};
   do gcloud compute ssh gp$i \
@@ -48,7 +48,7 @@ EOF
     --zone=us-east4-a & \
   done;
 ```
-Добавил gpg-ключ Ubuntu:
+- Добавил gpg-ключ Ubuntu:
 ```
 for i in {1..4};
   do gcloud compute ssh gp$i \
@@ -57,7 +57,7 @@ for i in {1..4};
     --zone=us-east4-a &\
   done;
 ```
-Обновил список пакетов, сами пакеты, установил sshpass и Greenplum:
+- Обновил список пакетов, сами пакеты, установил sshpass и Greenplum:
 ```
 for i in {1..4};
   do gcloud compute ssh gp$i \
@@ -67,7 +67,7 @@ for i in {1..4};
     --zone=us-east4-a &\
   done;
 ```
-Сменил владельца каталога с установленным Greenplun на `gpadmin`:
+- Сменил владельца каталога с установленным Greenplun на `gpadmin`:
 ```
 for i in {1..4};
   do gcloud compute ssh gp$i \
@@ -76,7 +76,7 @@ for i in {1..4};
     --zone=us-east4-a &\
   done;
 ```
-Добавил инициализацию переменных окружения, необходимых для работы
+- Добавил инициализацию переменных окружения, необходимых для работы
 Greenplum:
 ```
 for i in {1..4};
@@ -89,7 +89,7 @@ EOF
     --zone=us-east4-a &\
   done;
 ```
-Включил возможность входа по ssh с использованием пароля:
+- Включил возможность входа по ssh с использованием пароля:
 ```
 for i in {1..4};
   do gcloud compute ssh gp$i \
@@ -98,7 +98,7 @@ for i in {1..4};
     --zone=us-east4-a &\
   done;
 ```
-Раскидал ssh-ключи по виртуальным машинам:
+- Раскидал ssh-ключи по виртуальным машинам:
 ```
 for i in {1..4};
   do gcloud compute ssh gp$i \
