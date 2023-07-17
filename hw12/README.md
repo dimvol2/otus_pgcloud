@@ -2,9 +2,9 @@
 # Курс `PostgreSQL Cloud Solutions`
 ### ДЗ #12 "Parallel cluster" (Занятие "Массивно параллельные кластера PostgreSQL")
 
-1. Создал 2 VM в GCE
+1. Создал 4 VM в GCE
 ```
-for i in {1..2};
+for i in {1..4};
   do gcloud compute instances create gp$i --zone=us-east4-a \
     --machine-type=e2-standard-2 \
     --boot-disk-size=50GB --boot-disk-type=pd-ssd \
@@ -13,7 +13,7 @@ for i in {1..2};
 ```
 Добавил пользователя `gpadmin` и создал пару ssh-ключей:
 ```
-for i in {1..2};
+for i in {1..4};
   do gcloud compute ssh gp$i \
     --command='sudo groupadd gpadmin && \
     sudo useradd gpadmin -r -m -g gpadmin && \
@@ -25,7 +25,7 @@ for i in {1..2};
 ```
 Добавил репозиторий Greenplum от Ubuntu версии 18.04
 ```
-for i in {1..2};
+for i in {1..4};
   do gcloud compute ssh gp$i \
     --command='cat > repo.list << EOF 
 deb http://ppa.launchpad.net/greenplum/db/ubuntu bionic main
@@ -37,7 +37,7 @@ EOF
 ```
 Закрепил этот репозиторий в качестве источника пакетов для Greenplum:
 ```
-for i in {1..2};
+for i in {1..4};
   do gcloud compute ssh gp$i \
     --command='cat > repo.pin << EOF 
 Package: greenplum*
@@ -50,7 +50,7 @@ EOF
 ```
 Добавил gpg-ключ Ubuntu:
 ```
-for i in {1..2};
+for i in {1..4};
   do gcloud compute ssh gp$i \
     --command='gpg --keyserver keyserver.ubuntu.com --recv 3C6FDC0C01D86213 && \
     gpg --export --armor 3C6FDC0C01D86213 | sudo apt-key add -' \
@@ -59,7 +59,7 @@ for i in {1..2};
 ```
 Обновил список пакетов, сами пакеты, установил sshpass и Greenplum:
 ```
-for i in {1..2};
+for i in {1..4};
   do gcloud compute ssh gp$i \
     --command='sudo apt update && \
     sudo apt upgrade -y -q && \
@@ -69,7 +69,7 @@ for i in {1..2};
 ```
 Сменил владельца каталога с установленным Greenplun на `gpadmin`:
 ```
-for i in {1..2};
+for i in {1..4};
   do gcloud compute ssh gp$i \
     --command='sudo chown -R gpadmin.gpadmin /opt/greenplum* && \
     sudo chgrp -R gpadmin /opt/greenplum*' \
@@ -79,7 +79,7 @@ for i in {1..2};
 Добавил инициализацию переменных окружения, необходимых для работы
 Greenplum:
 ```
-for i in {1..2};
+for i in {1..4};
   do gcloud compute ssh gp$i \
     --command='sudo chsh -s /bin/bash gpadmin && \
     cat > bashrc << EOF
@@ -91,7 +91,7 @@ EOF
 ```
 Включил возможность входа по ssh с использованием пароля:
 ```
-for i in {1..2};
+for i in {1..4};
   do gcloud compute ssh gp$i \
     --command='sudo sed -i s@"PasswordAuthentication no"@"PasswordAuthentication yes"@ /etc/ssh/sshd_config && \
     sudo systemctl restart ssh' \
@@ -100,9 +100,9 @@ for i in {1..2};
 ```
 Раскидал ssh-ключи по виртуальным машинам:
 ```
-for i in {1..2};
+for i in {1..4};
   do gcloud compute ssh gp$i \
-    --command='for j in {1..2}; do sudo su -c "SSHPASS=gpadmin123 sshpass -v -e ssh-copy-id -o StrictHostKeyChecking=no gp$j" gpadmin & done' \
+    --command='for j in {1..4}; do sudo su -c "SSHPASS=gpadmin123 sshpass -v -e ssh-copy-id -o StrictHostKeyChecking=no gp$j" gpadmin & done' \
     --zone=us-east4-a &\
   done;
 ```
