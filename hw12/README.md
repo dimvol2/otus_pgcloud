@@ -106,6 +106,17 @@ for i in {1..4};
     --zone=us-east4-a &\
   done;
 ```
+
+- На master-ноде добавил репозиторий Ubuntu 16.04 для библиотеки libssl1.0.0:
+```
+root@gp1:~# echo "deb http://security.ubuntu.com/ubuntu xenial-security main">> /etc/apt/sources.list
+```
+
+- и установил библиотеку на master-ноду:
+```
+apt update && apt install libssl1.0.0 -y
+```
+
 - Создал директорию для данных на master- и standby-нодах с владельцем gpadmin:
 ```
 for i in {1..2};
@@ -125,6 +136,35 @@ for i in {3..4};
   done;
 ```
 
-
-
+- На master-ноде в новую директорию скопировал конфиг СУБД по умолчанию
+```
+gpadmin@gp1:~$ mkdir gpconfigs
+gpadmin@gp1:~$ cp $GPHOME/docs/cli_help/gpconfigs/gpinitsystem_config \
+  /home/gpadmin/gpconfigs/
+```
+- Определил необходимые параметры конфигурации:
+```
+gpadmin@gp1:~$ cat >>gpconfigs/gpinitsystem_config<<EOF
+MASTER_HOSTNAME=gp1
+declare -a DATA_DIRECTORY=(/data/primary)
+MASTER_PORT=5432
+MASTER_DIRECTORY=/data/master
+MIRROR_PORT_BASE=7000
+declare -a MIRROR_DATA_DIRECTORY=(/data/mirror)
+EOF
+```
+- Создал конфигурационный файл со списком имен сегментов:
+```
+gpadmin@gp1:~$ cat >>gpconfigs/hostfile_gpinitsystem<<EOF
+gp3
+gp4
+EOF
+```
+- Инициализировал Greenplum с поддержкой мирроринга командой:
+```
+gpinitsystem -c gpconfigs/gpinitsystem_config -h gpconfigs/hostfile_gpinitsystem -s gp2 --mirror-mode=spread
+```
+- Проверил работу:
+```
+```
 ---
