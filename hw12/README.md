@@ -23,7 +23,7 @@ for i in {1..2};
     --zone=us-east4-a &\
   done;
 ```
-Добавил репозиторий от Ubuntu версии 18.04
+Добавил репозиторий Greenplum от Ubuntu версии 18.04
 ```
 for i in {1..2};
   do gcloud compute ssh gp$i \
@@ -102,9 +102,12 @@ for i in {1..2};
 ```
 for i in {1..2};
   do gcloud compute ssh gp$i \
-    --command='sudo su -c "for j in {1..2}; do SSHPASS=gpadmin123 sshpass -v -e ssh-copy-id -o StrictHostKeyChecking=no gp$j & done" gpadmin' \
+    --command='for j in {1..2}; do sudo su -c "SSHPASS=gpadmin123 sshpass -v -e ssh-copy-id -o StrictHostKeyChecking=no gp$j" gpadmin & done' \
     --zone=us-east4-a &\
   done;
 ```
+
+
+
 
 ---
