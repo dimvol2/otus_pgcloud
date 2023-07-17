@@ -2,7 +2,7 @@
 # Курс `PostgreSQL Cloud Solutions`
 ### ДЗ #12 "Parallel cluster" (Занятие "Массивно параллельные кластера PostgreSQL")
 
-- Создал 4 VM в GCE
+- Создал 4 VM в GCE (2 CPU, 8GB RAM, 50GB SSD)
 ```
 for i in {1..4};
   do gcloud compute instances create gp$i --zone=us-east4-a \
