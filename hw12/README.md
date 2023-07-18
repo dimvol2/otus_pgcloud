@@ -2,7 +2,7 @@
 # Курс `PostgreSQL Cloud Solutions`
 ### ДЗ #12 "Parallel cluster" (Занятие "Массивно параллельные кластера PostgreSQL")
 
-- Создал 4 VM в GCE (2 CPU, 8GB RAM, 50GB SSD)
+- Создал 4 VM в GCE (2 CPU, 8GB RAM, 50GB SSD):
 ```
 for i in {1..4};
   do gcloud compute instances create gp$i --zone=us-east4-a \
@@ -23,7 +23,7 @@ for i in {1..4};
     --zone=us-east4-a &\
   done;
 ```
-- Добавил репозиторий Greenplum от Ubuntu версии 18.04
+- Добавил репозиторий Greenplum от Ubuntu версии 18.04:
 ```
 for i in {1..4};
   do gcloud compute ssh gp$i \
@@ -134,7 +134,7 @@ for i in {3..4};
   done;
 ```
 
-- На master-ноде в новую директорию скопировал конфиг СУБД по умолчанию
+- На master-ноде в новую директорию скопировал конфиг СУБД по умолчанию:
 ```
 gpadmin@gp1:~$ mkdir gpconfigs
 gpadmin@gp1:~$ cp $GPHOME/docs/cli_help/gpconfigs/gpinitsystem_config \
