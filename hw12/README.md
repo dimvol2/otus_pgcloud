@@ -107,23 +107,11 @@ for i in {1..4};
   done;
 ```
 
-- Добавил репозиторий Ubuntu 16.04 для библиотеки libssl1.0.0:
+- Установил библиотеку libssl1.0.0:
 ```
 for i in {1..4};
   do gcloud compute ssh gp$i \
-    --command='cat > repo.list << EOF 
-deb http://security.ubuntu.com/ubuntu xenial-security main
-EOF
-    cat repo.list | sudo tee -a /etc/apt/sources.list.d/xenial.list' \
-    --zone=us-east4-a & \
-  done;
-```
-
-- и установил её:
-```
-for i in {1..4};
-  do gcloud compute ssh gp$i \
-    --command='sudo apt update && sudo apt install libssl1.0.0 -y' \
+    --command='sudo apt install libssl1.0.0 -y' \
     --zone=us-east4-a &\
   done;
 ```
@@ -172,7 +160,7 @@ EOF
 ```
 - Инициализировал Greenplum с поддержкой мирроринга командой:
 ```
-gpinitsystem -c gpconfigs/gpinitsystem_config -h gpconfigs/hostfile_gpinitsystem -s gp2 --mirror-mode=spread
+gpadmin@gp1:~$ gpinitsystem -c gpconfigs/gpinitsystem_config -h gpconfigs/hostfile_gpinitsystem -s gp2 --mirror-mode=spread
 ```
 - Проверил состояние:
 ```
@@ -311,7 +299,19 @@ user	0m14.679s
 sys	0m42.515s
 ```
 
-Выполнил пару раз аналитический запрос:
+- Посмотрел распределение данных по сегментам, оно равномерное:
+```
+taxi=# SELECT gp_segment_id, count(*)
+FROM taxi_trips GROUP BY gp_segment_id
+ORDER BY gp_segment_id; 
+ gp_segment_id |  count   
+---------------+----------
+             0 | 13378692
+             1 | 13374991
+(2 rows)
+```
+
+- Выполнил пару раз аналитический запрос:
 ```
 taxi=# \timing 
 Timing is on.
