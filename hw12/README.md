@@ -359,6 +359,6 @@ Time: 7377.038 ms
 
 Запрос выполняется почти в два раза быстрее, чем при развёртывании Greenplum
 на одной ВМ с такими же характеристиками и более чем в пять раз быстрее,
-чем в ванильном PostgreSQL (см. [ДЗ#8](https://github.com/dimvol2/otus_pgcloud/tree/main/hw8))
+чем в ванильном PostgreSQL (оба теста см. в [ДЗ#8](https://github.com/dimvol2/otus_pgcloud/tree/main/hw8))
 
 ---
