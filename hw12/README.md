@@ -283,7 +283,7 @@ CREATE TABLE
 
 - Загрузил в неё данные из бакета с поездками чикагского такси:
 ```
-bbc@hw8:~$ time for f in /tmp/taxi_local/taxi*
+gpadmin@gp1:~$ time for f in /tmp/taxi_local/taxi*
 do
         echo -e "Processing $f file..."
         psql -d taxi -c "\\COPY taxi_trips FROM PROGRAM 'cat $f' CSV HEADER"
