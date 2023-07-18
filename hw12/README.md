@@ -112,7 +112,7 @@ for i in {1..4};
 for i in {1..4};
   do gcloud compute ssh gp$i \
     --command='sudo echo "deb http://security.ubuntu.com/ubuntu xenial-security main">> /etc/apt/sources.list && \
-    sudo apt update && apt install libssl1.0.0 -y' \
+    sudo apt update && sudo apt install libssl1.0.0 -y' \
     --zone=us-east4-a &\
   done;
 ```
