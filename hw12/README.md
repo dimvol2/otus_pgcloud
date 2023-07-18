@@ -107,16 +107,15 @@ for i in {1..4};
   done;
 ```
 
-- На master-ноде добавил репозиторий Ubuntu 16.04 для библиотеки libssl1.0.0:
+- Добавил репозиторий Ubuntu 16.04 для библиотеки libssl1.0.0 и установил её:
 ```
-root@gp1:~# echo "deb http://security.ubuntu.com/ubuntu xenial-security main">> /etc/apt/sources.list
+for i in {1..4};
+  do gcloud compute ssh gp$i \
+    --command='sudo echo "deb http://security.ubuntu.com/ubuntu xenial-security main">> /etc/apt/sources.list && \
+    sudo apt update && apt install libssl1.0.0 -y' \
+    --zone=us-east4-a &\
+  done;
 ```
-
-- и установил библиотеку на master-ноду:
-```
-apt update && apt install libssl1.0.0 -y
-```
-
 - Создал директорию для данных на master- и standby-нодах с владельцем gpadmin:
 ```
 for i in {1..2};
@@ -164,7 +163,190 @@ EOF
 ```
 gpinitsystem -c gpconfigs/gpinitsystem_config -h gpconfigs/hostfile_gpinitsystem -s gp2 --mirror-mode=spread
 ```
-- Проверил работу:
+- Проверил состояние:
 ```
+gpadmin@gp1:~$ export MASTER_DATA_DIRECTORY=/data/master/gpseg-1
+gpadmin@gp1:~$ gpstate
+20230717:22:55:53:031407 gpstate:gp1:gpadmin-[INFO]:-Starting gpstate with args: 
+20230717:22:55:53:031407 gpstate:gp1:gpadmin-[INFO]:-local Greenplum Version: 'postgres (Greenplum Database) 6.25.0 build commit:a7ff2cf4eeff7456d41f7d5ca5f20d6b008ad819 Open Source'
+20230717:22:55:53:031407 gpstate:gp1:gpadmin-[INFO]:-master Greenplum Version: 'PostgreSQL 9.4.26 (Greenplum Database 6.25.0 build commit:a7ff2cf4eeff7456d41f7d5ca5f20d6b008ad819 Open Source) on x86_64-unknown-linux-gnu, compiled by gcc (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0, 64-bit compiled on Jul 13 2023 13:46:16'
+20230717:22:55:53:031407 gpstate:gp1:gpadmin-[INFO]:-Obtaining Segment details from master...
+20230717:22:55:53:031407 gpstate:gp1:gpadmin-[INFO]:-Gathering data from segments...
+20230717:22:55:54:031407 gpstate:gp1:gpadmin-[INFO]:-Greenplum instance status summary
+20230717:22:55:54:031407 gpstate:gp1:gpadmin-[INFO]:-----------------------------------------------------
+20230717:22:55:54:031407 gpstate:gp1:gpadmin-[INFO]:-   Master instance                                           = Active
+20230717:22:55:54:031407 gpstate:gp1:gpadmin-[INFO]:-   Master standby                                            = gp2
+20230717:22:55:54:031407 gpstate:gp1:gpadmin-[INFO]:-   Standby master state                                      = Standby host passive
+20230717:22:55:54:031407 gpstate:gp1:gpadmin-[INFO]:-   Total segment instance count from metadata                = 4
+20230717:22:55:54:031407 gpstate:gp1:gpadmin-[INFO]:-----------------------------------------------------
+20230717:22:55:54:031407 gpstate:gp1:gpadmin-[INFO]:-   Primary Segment Status
+20230717:22:55:54:031407 gpstate:gp1:gpadmin-[INFO]:-----------------------------------------------------
+20230717:22:55:54:031407 gpstate:gp1:gpadmin-[INFO]:-   Total primary segments                                    = 2
+20230717:22:55:54:031407 gpstate:gp1:gpadmin-[INFO]:-   Total primary segment valid (at master)                   = 2
+20230717:22:55:54:031407 gpstate:gp1:gpadmin-[INFO]:-   Total primary segment failures (at master)                = 0
+20230717:22:55:54:031407 gpstate:gp1:gpadmin-[INFO]:-   Total number of postmaster.pid files missing              = 0
+20230717:22:55:54:031407 gpstate:gp1:gpadmin-[INFO]:-   Total number of postmaster.pid files found                = 2
+20230717:22:55:54:031407 gpstate:gp1:gpadmin-[INFO]:-   Total number of postmaster.pid PIDs missing               = 0
+20230717:22:55:54:031407 gpstate:gp1:gpadmin-[INFO]:-   Total number of postmaster.pid PIDs found                 = 2
+20230717:22:55:54:031407 gpstate:gp1:gpadmin-[INFO]:-   Total number of /tmp lock files missing                   = 0
+20230717:22:55:54:031407 gpstate:gp1:gpadmin-[INFO]:-   Total number of /tmp lock files found                     = 2
+20230717:22:55:54:031407 gpstate:gp1:gpadmin-[INFO]:-   Total number postmaster processes missing                 = 0
+20230717:22:55:54:031407 gpstate:gp1:gpadmin-[INFO]:-   Total number postmaster processes found                   = 2
+20230717:22:55:54:031407 gpstate:gp1:gpadmin-[INFO]:-----------------------------------------------------
+20230717:22:55:54:031407 gpstate:gp1:gpadmin-[INFO]:-   Mirror Segment Status
+20230717:22:55:54:031407 gpstate:gp1:gpadmin-[INFO]:-----------------------------------------------------
+20230717:22:55:54:031407 gpstate:gp1:gpadmin-[INFO]:-   Total mirror segments                                     = 2
+20230717:22:55:54:031407 gpstate:gp1:gpadmin-[INFO]:-   Total mirror segment valid (at master)                    = 2
+20230717:22:55:54:031407 gpstate:gp1:gpadmin-[INFO]:-   Total mirror segment failures (at master)                 = 0
+20230717:22:55:54:031407 gpstate:gp1:gpadmin-[INFO]:-   Total number of postmaster.pid files missing              = 0
+20230717:22:55:54:031407 gpstate:gp1:gpadmin-[INFO]:-   Total number of postmaster.pid files found                = 2
+20230717:22:55:54:031407 gpstate:gp1:gpadmin-[INFO]:-   Total number of postmaster.pid PIDs missing               = 0
+20230717:22:55:54:031407 gpstate:gp1:gpadmin-[INFO]:-   Total number of postmaster.pid PIDs found                 = 2
+20230717:22:55:54:031407 gpstate:gp1:gpadmin-[INFO]:-   Total number of /tmp lock files missing                   = 0
+20230717:22:55:54:031407 gpstate:gp1:gpadmin-[INFO]:-   Total number of /tmp lock files found                     = 2
+20230717:22:55:54:031407 gpstate:gp1:gpadmin-[INFO]:-   Total number postmaster processes missing                 = 0
+20230717:22:55:54:031407 gpstate:gp1:gpadmin-[INFO]:-   Total number postmaster processes found                   = 2
+20230717:22:55:54:031407 gpstate:gp1:gpadmin-[INFO]:-   Total number mirror segments acting as primary segments   = 0
+20230717:22:55:54:031407 gpstate:gp1:gpadmin-[INFO]:-   Total number mirror segments acting as mirror segments    = 2
+20230717:22:55:54:031407 gpstate:gp1:gpadmin-[INFO]:-----------------------------------------------------
 ```
+
+- Установил на master-ноде репозиторий ПО для работы с бакетами:
+```
+root@gp1:~# echo "deb https://packages.cloud.google.com/apt gcsfuse-$(lsb_release -c -s) main" \
+| tee /etc/apt/sources.list.d/gcsfuse.list
+root@gp1:~# curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
+```
+
+- Установил ПО для работы с бакетами и обновил ОС:
+```
+root@gp1:~# apt update && apt install fuse gcsfuse -y && apt upgrade -y
+```
+
+- Смонтировал каталог с набором данных в локальную директорию с read-only доступом для всех пользователей:
+```
+root@gp1:~# mkdir /tmp/taxi && gcsfuse -o allow_other,ro chicago10 /tmp/taxi
+I0611 18:27:20.150658 2023/06/11 18:27:20.150621 Start gcsfuse/0.42.5 (Go version go1.20.3) for app "" using mount point: /home/bbc/data
+```
+
+- Сделал локальную копию данных:
+```
+gpadmin@gp1:~$ cp -av /tmp/taxi /tmp/taxi_local
+```
+
+- Создал БД, подключился:
+```
+gpadmin@gp1:~$ createdb taxi
+
+gpadmin@gp1:~$ psql -d taxi
+psql (9.4.26)
+Type "help" for help.
+
+taxi=# 
+```
+
+- Создал колоночную таблицу:
+```
+taxi=# create table taxi_trips (
+unique_key text, 
+taxi_id text, 
+trip_start_timestamp TIMESTAMP, 
+trip_end_timestamp TIMESTAMP, 
+trip_seconds bigint, 
+trip_miles numeric, 
+pickup_census_tract bigint, 
+dropoff_census_tract bigint, 
+pickup_community_area bigint, 
+dropoff_community_area bigint, 
+fare numeric, 
+tips numeric, 
+tolls numeric, 
+extras numeric, 
+trip_total numeric, 
+payment_type text, 
+company text, 
+pickup_latitude numeric, 
+pickup_longitude numeric, 
+pickup_location text, 
+dropoff_latitude numeric, 
+dropoff_longitude numeric, 
+dropoff_location text)
+WITH (
+    appendonly = true,
+    orientation = column,
+    compresstype = zstd,
+    compresslevel = 1
+);
+NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'unique_key' as the Greenplum Database data distribution key for this table.
+HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
+CREATE TABLE
+```
+
+- Загрузил в неё данные из бакета с поездками чикагского такси:
+```
+bbc@hw8:~$ time for f in /tmp/taxi_local/taxi*
+do
+        echo -e "Processing $f file..."
+        psql -d taxi -c "\\COPY taxi_trips FROM PROGRAM 'cat $f' CSV HEADER"
+done
+Processing /tmp/taxi_local/taxi.csv.000000000000 file...
+COPY 668818
+..
+Processing /tmp/taxi_local/taxi.csv.000000000039 file...
+COPY 629855
+
+real	2m53.801s
+user	0m14.679s
+sys	0m42.515s
+```
+
+Выполнил пару раз аналитический запрос:
+```
+taxi=# \timing 
+Timing is on.
+taxi=# SELECT payment_type, round(sum(tips)/sum(trip_total)*100, 0) + 0 as tips_percent, count(*) as c
+FROM taxi_trips
+group by payment_type
+order by 3;
+ payment_type | tips_percent |    c     
+--------------+--------------+----------
+ Prepaid      |            0 |        6
+ Way2ride     |           12 |       27
+ Split        |           17 |      180
+ Dispute      |            0 |     5596
+ Pcard        |            2 |    13575
+ No Charge    |            0 |    26294
+ Mobile       |           16 |    61256
+ Prcard       |            1 |    86053
+ Unknown      |            0 |   103869
+ Credit Card  |           17 |  9224956
+ Cash         |            0 | 17231871
+(11 rows)
+
+Time: 7054.400 ms
+taxi=# SELECT payment_type, round(sum(tips)/sum(trip_total)*100, 0) + 0 as tips_percent, count(*) as c
+FROM taxi_trips
+group by payment_type
+order by 3;
+ payment_type | tips_percent |    c     
+--------------+--------------+----------
+ Prepaid      |            0 |        6
+ Way2ride     |           12 |       27
+ Split        |           17 |      180
+ Dispute      |            0 |     5596
+ Pcard        |            2 |    13575
+ No Charge    |            0 |    26294
+ Mobile       |           16 |    61256
+ Prcard       |            1 |    86053
+ Unknown      |            0 |   103869
+ Credit Card  |           17 |  9224956
+ Cash         |            0 | 17231871
+(11 rows)
+
+Time: 7377.038 ms
+```
+
+Запрос выполняется почти в два раза быстрее, чем при развёртывании Greenplum
+на одной ВМ с такими же характеристиками (см. ...)
+
 ---
