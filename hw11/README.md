@@ -234,11 +234,4 @@ postgres=# select * from master_get_active_worker_nodes();
 (3 rows)
 ```
 
-Обновил источник пакетов для debian 9:
-```
-sed -i -e 's/deb.debian.org/archive.debian.org/g' \
-           -e 's|security.debian.org|archive.debian.org/|g' \
-           -e '/stretch-updates/d' /etc/apt/sources.list
-```
-
 ---
