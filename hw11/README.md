@@ -12,7 +12,7 @@ bash-5.1$ gcloud container clusters list
 NAME  LOCATION       MASTER_VERSION   MASTER_IP      MACHINE_TYPE   NODE_VERSION     NUM_NODES  STATUS
 hw11  us-central1-f  1.26.5-gke.1200  35.223.104.24  e2-standard-2  1.26.5-gke.1200  3          RUNNING
 ``` 
-- и наличие трёх нод:
+и наличие трёх нод:
 ```
 bash-5.1$ kubectl get nodes
 NAME                                  STATUS   ROLES    AGE     VERSION
@@ -45,7 +45,7 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 10Gi
+      storage: 20Gi
 ---
 apiVersion: v1
 kind: Service
@@ -76,7 +76,7 @@ spec:
     spec:
       containers:
       - name: citus
-        image: citusdata/citus:7.3.0
+        image: citusdata/citus:8.0.0
         ports:
         - containerPort: 5432
         env:
@@ -105,7 +105,7 @@ spec:
           persistentVolumeClaim:
             claimName: citus-master-pvc
 ```
-запустил мастер-ноду на версии CitusDB 7.3.0 (чтобы далее собирать кластер по
+запустил мастер-ноду на версии CitusDB 8.0.0 (чтобы далее собирать кластер по
 hostname)
 ```
 bash-5.1$ kubectl create -f secrets.yaml -f master.yaml 
@@ -116,6 +116,7 @@ deployment.apps/citus-master created
 ```
 
 - Используя конфиг worker-нод с версией CitusDB 11.3
+
 workers.yaml
 ```
 apiVersion: v1
