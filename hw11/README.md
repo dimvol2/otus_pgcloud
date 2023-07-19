@@ -61,7 +61,7 @@ spec:
   - port: 5432
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: citus-master
 spec:
