@@ -68,6 +68,7 @@ spec:
   selector:
     matchLabels:
       app: citus-master
+  serviceName: citus-master      
   replicas: 1
   template:
     metadata:
