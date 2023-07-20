@@ -207,23 +207,23 @@ statefulset.apps/citus-worker created
 ```
 bash-5.1$ kubectl get pods 
 NAME                            READY   STATUS    RESTARTS   AGE
-citus-master-5bff7bc99c-dk8tj   1/1     Running   0          5m27s
-citus-worker-0                  1/1     Running   0          86s
-citus-worker-1                  1/1     Running   0          61s
-citus-worker-2                  1/1     Running   0          38s
+citus-master-0   1/1     Running   0          3m3s
+citus-worker-0   1/1     Running   0          82s
+citus-worker-1   1/1     Running   0          59s
+citus-worker-2   1/1     Running   0          40s
 ```
 
 - Зашёл в контейнер на master-ноду:
 ```
-bash-5.1$ kubectl exec -ti citus-master-5bff7bc99c-dk8tj bash
+bash-5.1$ kubectl exec -ti citus-master-0 bash
 kubectl exec [POD] [COMMAND] is DEPRECATED and will be removed in a future version. Use kubectl exec [POD] -- [COMMAND] instead.
-root@citus-master-5bff7bc99c-dk8tj:/# 
+root@citus-master-0:/# 
 ```
 
 - Проверил подключение worker-нод к базе:
 ```
-root@citus-master-5bff7bc99c-dk8tj:/# psql -U postgres
-psql (10.3 (Debian 10.3-1.pgdg90+1))
+root@citus-master-0:/# psql -U postgres
+psql (11.0 (Debian 11.0-1.pgdg90+2))
 Type "help" for help.
 
 postgres=# select * from master_get_active_worker_nodes();
@@ -235,9 +235,71 @@ postgres=# select * from master_get_active_worker_nodes();
 (3 rows)
 ```
 
-- Скопировал набор данныз для тестирования на диск:
+- Поправил репозиторий, обновил список пакетов и установил curl:
 ```
-curl -O https://storage.googleapis.com/chicago10/taxi.csv.0000000000[00-39]
+root@citus-master-0:/# sed -i -e 's/deb.debian.org/archive.debian.org/g' \
+-e 's|security.debian.org|archive.debian.org/|g' \
+-e '/stretch-updates/d' /etc/apt/sources.list
+
+root@citus-master-0:/# apt update
+root@citus-master-0:/# apt install curl -y
+```
+
+- Скопировал набор данных для тестирования на диск:
+```
+cd /tmp/taxi && curl -O https://storage.googleapis.com/chicago10/taxi.csv.0000000000[00-39]
+```
+
+- Создал таблицу `taxi_trips` для загружаемых данных:
+```
+root@citus-master-0:/# psql -U postgres
+psql (11.0 (Debian 11.0-1.pgdg90+2))
+Type "help" for help.
+
+taxi=# create table taxi_trips (
+unique_key text, 
+taxi_id text, 
+trip_start_timestamp TIMESTAMP, 
+trip_end_timestamp TIMESTAMP, 
+trip_seconds bigint, 
+trip_miles numeric, 
+pickup_census_tract bigint, 
+dropoff_census_tract bigint, 
+pickup_community_area bigint, 
+dropoff_community_area bigint, 
+fare numeric, 
+tips numeric, 
+tolls numeric, 
+extras numeric, 
+trip_total numeric, 
+payment_type text, 
+company text, 
+pickup_latitude numeric, 
+pickup_longitude numeric, 
+pickup_location text, 
+dropoff_latitude numeric, 
+dropoff_longitude numeric, 
+dropoff_location text
+);
+CREATE TABLE
+
+postgres=# SELECT create_distributed_table('taxi_trips', 'unique_key');
+```
+
+- Залил данные в таблицу:
+```
+root@citus-master-0:/# time for f in /tmp/tax/taxi*
+do
+        echo -e "Processing $f file..."
+        psql -U postgres -c "\\COPY taxi_trips FROM PROGRAM 'cat $f' CSV HEADER"
+done
+
+Processing /tmp/taxi/taxi.csv.000000000000 file...
+COPY 668818
+...
+Processing /tmp/taxi/taxi.csv.000000000039 file...
+COPY 629855
+
 ```
 
 
