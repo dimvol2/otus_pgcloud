@@ -250,7 +250,7 @@ root@citus-master-0:/# apt install curl -y
 mkdir /tmp/taxi && cd /tmp/taxi && curl -O https://storage.googleapis.com/chicago10/taxi.csv.0000000000[00-39]
 ```
 
-- Создал таблицу `taxi_trips` для загружаемых данных:
+- Создал таблицу `taxi_trips` для загружаемых данных с шардированием по полю unique_key:
 ```
 root@citus-master-0:/# psql -U postgres
 psql (10.3 (Debian 10.3-1.pgdg90+1))
@@ -311,6 +311,8 @@ sys	0m29.282s
 
 - Выполнил пару раз аналитический запрос:
 ```
+postgres=# \timing 
+Timing is on.
 postgres=# SELECT payment_type, round(sum(tips)/sum(trip_total)*100, 0) + 0 as tips_percent, count(*) as c
 FROM taxi_trips
 group by payment_type
@@ -353,6 +355,9 @@ order by 3;
 Time: 3639.659 ms (00:03.640)
 ```
 
-TODO: Сравнить со временем в hw8 и hw12
+На ВМ с такими же характеристиками ванильный PostgreSQL давал результат на
+порядок медленнее: ~38s (см. [ДЗ#8](https://github.com/dimvol2/otus_pgcloud/tree/main/hw8)), а у Greenplum на двух сегментах были сходные
+результаты ~7s (см. [ДЗ#12](https://github.com/dimvol2/otus_pgcloud/tree/main/hw12))
+
 
 ---
