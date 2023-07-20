@@ -77,7 +77,7 @@ spec:
     spec:
       containers:
       - name: citus
-        image: citusdata/citus:8.0.0
+        image: citusdata/citus:7.3.0
         ports:
         - containerPort: 5432
         env:
@@ -247,7 +247,7 @@ root@citus-master-0:/# apt install curl -y
 
 - Скопировал набор данных для тестирования на диск:
 ```
-cd /tmp/taxi && curl -O https://storage.googleapis.com/chicago10/taxi.csv.0000000000[00-39]
+mkdir /tmp/taxi && cd /tmp/taxi && curl -O https://storage.googleapis.com/chicago10/taxi.csv.0000000000[00-39]
 ```
 
 - Создал таблицу `taxi_trips` для загружаемых данных:
@@ -284,11 +284,15 @@ dropoff_location text
 CREATE TABLE
 
 postgres=# SELECT create_distributed_table('taxi_trips', 'unique_key');
+ create_distributed_table 
+--------------------------
+ 
+(1 row)
 ```
 
 - Залил данные в таблицу:
 ```
-root@citus-master-0:/# time for f in /tmp/tax/taxi*
+root@citus-master-0:/# time for f in /tmp/taxi/taxi*
 do
         echo -e "Processing $f file..."
         psql -U postgres -c "\\COPY taxi_trips FROM PROGRAM 'cat $f' CSV HEADER"
