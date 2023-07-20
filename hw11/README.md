@@ -223,7 +223,7 @@ root@citus-master-0:/#
 - Проверил подключение worker-нод к базе:
 ```
 root@citus-master-0:/# psql -U postgres
-psql (11.0 (Debian 11.0-1.pgdg90+2))
+psql (10.3 (Debian 10.3-1.pgdg90+1))
 Type "help" for help.
 
 postgres=# select * from master_get_active_worker_nodes();
@@ -253,7 +253,7 @@ mkdir /tmp/taxi && cd /tmp/taxi && curl -O https://storage.googleapis.com/chicag
 - Создал таблицу `taxi_trips` для загружаемых данных:
 ```
 root@citus-master-0:/# psql -U postgres
-psql (11.0 (Debian 11.0-1.pgdg90+2))
+psql (10.3 (Debian 10.3-1.pgdg90+1))
 Type "help" for help.
 
 taxi=# create table taxi_trips (
