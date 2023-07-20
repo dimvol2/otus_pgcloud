@@ -304,8 +304,55 @@ COPY 668818
 Processing /tmp/taxi/taxi.csv.000000000039 file...
 COPY 629855
 
+real	5m45.802s
+user	0m9.802s
+sys	0m29.282s
 ```
 
+- Выполнил пару раз аналитический запрос:
+```
+postgres=# SELECT payment_type, round(sum(tips)/sum(trip_total)*100, 0) + 0 as tips_percent, count(*) as c
+FROM taxi_trips
+group by payment_type
+order by 3;
+ payment_type | tips_percent |    c     
+--------------+--------------+----------
+ Prepaid      |            0 |        6
+ Way2ride     |           12 |       27
+ Split        |           17 |      180
+ Dispute      |            0 |     5596
+ Pcard        |            2 |    13575
+ No Charge    |            0 |    26294
+ Mobile       |           16 |    61256
+ Prcard       |            1 |    86053
+ Unknown      |            0 |   103869
+ Credit Card  |           17 |  9224956
+ Cash         |            0 | 17231871
+(11 rows)
 
+Time: 5694.201 ms (00:05.694)
+postgres=# SELECT payment_type, round(sum(tips)/sum(trip_total)*100, 0) + 0 as tips_percent, count(*) as c
+FROM taxi_trips
+group by payment_type
+order by 3;
+ payment_type | tips_percent |    c     
+--------------+--------------+----------
+ Prepaid      |            0 |        6
+ Way2ride     |           12 |       27
+ Split        |           17 |      180
+ Dispute      |            0 |     5596
+ Pcard        |            2 |    13575
+ No Charge    |            0 |    26294
+ Mobile       |           16 |    61256
+ Prcard       |            1 |    86053
+ Unknown      |            0 |   103869
+ Credit Card  |           17 |  9224956
+ Cash         |            0 | 17231871
+(11 rows)
+
+Time: 3639.659 ms (00:03.640)
+```
+
+TODO: Сравнить со временем в hw8 и hw12
 
 ---
