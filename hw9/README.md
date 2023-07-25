@@ -149,7 +149,65 @@ do
         psql -d taxi -U postgres -c "\\COPY taxi_trips FROM PROGRAM 'cat $f' CSV HEADER"
 done
 ```
-- Аналитические запросы на обеих нодах
+- Сделал аналитический запрос на обеих нодах:
+```
+postgres@prim:~$ psql -d taxi
+psql (15.3 (Ubuntu 15.3-1.pgdg22.04+1))
+Type "help" for help.
+
+taxi=# \timing 
+Timing is on.
+taxi=# SELECT payment_type, round(sum(tips)/sum(trip_total)*100, 0) + 0 as tips_percent, count(*) as c
+FROM taxi_trips
+group by payment_type
+order by 3;
+ payment_type | tips_percent |    c     
+--------------+--------------+----------
+ Prepaid      |            0 |        6
+ Way2ride     |           12 |       27
+ Split        |           17 |      180
+ Dispute      |            0 |     5596
+ Pcard        |            2 |    13575
+ No Charge    |            0 |    26294
+ Mobile       |           16 |    61256
+ Prcard       |            1 |    86053
+ Unknown      |            0 |   103869
+ Credit Card  |           17 |  9224956
+ Cash         |            0 | 17231871
+(11 rows)
+
+Time: 84000.100 ms (01:24.000)
+```
+
+```
+postgres@sec:~$ psql -d taxi
+psql (15.3 (Ubuntu 15.3-1.pgdg22.04+1))
+Type "help" for help.
+
+taxi=# \timing 
+Timing is on.
+taxi=# SELECT payment_type, round(sum(tips)/sum(trip_total)*100, 0) + 0 as tips_percent, count(*) as c
+FROM taxi_trips
+group by payment_type
+order by 3;
+ payment_type | tips_percent |    c     
+--------------+--------------+----------
+ Prepaid      |            0 |        6
+ Way2ride     |           12 |       27
+ Split        |           17 |      180
+ Dispute      |            0 |     5596
+ Pcard        |            2 |    13575
+ No Charge    |            0 |    26294
+ Mobile       |           16 |    61256
+ Prcard       |            1 |    86053
+ Unknown      |            0 |   103869
+ Credit Card  |           17 |  9224956
+ Cash         |            0 | 17231871
+(11 rows)
+
+Time: 45165.624 ms (00:45.166)
+```
+
 
 
 - Проверил ведомую ноду, действительно PostgreSQL в режиме read-only:
