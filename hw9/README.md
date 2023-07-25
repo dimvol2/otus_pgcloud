@@ -70,7 +70,7 @@ node_1 |     1 | prim.us-east4-a.c.disco-ascent-385720.internal:5432 |   1: 0/15
 
 - Поднял PostgreSQL На ведомой ноде `sec`, включив её в HA кластер:
 ```
-pg_autoctl create postgres \
+postgres@sec:~$ pg_autoctl create postgres \
    --auth trust \
    --ssl-self-signed \
    --pgdata ~/secondary \
