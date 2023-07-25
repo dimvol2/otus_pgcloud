@@ -16,7 +16,6 @@ for i in prim sec mon;
 
 ```
 sudo mkdir /etc/postgresql-common && echo "create_main_cluster = false" | sudo tee -a /etc/postgresql-common/createcluster.conf
-create_main_cluster = false
 
 curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
 echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -c -s)-pgdg main" | sudo tee -a /etc/apt/sources.list.d/pgdg.list
