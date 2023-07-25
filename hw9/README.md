@@ -88,14 +88,6 @@ node_1 |     1 | prim.us-east4-a.c.disco-ascent-385720.internal:5432 |   1: 0/30
 node_2 |     2 |  sec.us-east4-a.c.disco-ascent-385720.internal:5432 |   1: 0/3000110 |    read-only |           secondary |           secondary
 ```
 
-postgres@prim:~$ /usr/lib/postgresql/15/bin/pg_ctl -D ./prim_data stop
-
-postgres@mon:~$ pg_autoctl show state
-  Name |  Node |                                           Host:Port |       TLI: LSN |   Connection |      Reported State |      Assigned State
--------+-------+-----------------------------------------------------+----------------+--------------+---------------------+--------------------
-node_1 |     1 | prim.us-east4-a.c.disco-ascent-385720.internal:5432 |   1: 0/350D6F8 |       none ! |             demoted |          catchingup
-node_2 |     2 |  sec.us-east4-a.c.disco-ascent-385720.internal:5432 |   2: 0/350ECF0 |   read-write |        wait_primary |        wait_primary
-
 - Установил на ведущую ноду репозиторий ПО для работы с бакетами, само ПО и обновил ОС:
 ```
 root@prim:~# echo "deb https://packages.cloud.google.com/apt gcsfuse-$(lsb_release -c -s) main" \
@@ -109,10 +101,6 @@ root@prim:~# apt update && apt install fuse gcsfuse -y && apt upgrade -y
 ```
 root@prim:~# mkdir /tmp/taxi && gcsfuse -o allow_other,ro chicago10 /tmp/taxi
 I0725 20:47:01.794268 2023/07/25 20:47:01.794238 Start gcsfuse/1.0.0 (Go version go1.20.4) for app "" using mount point: /tmp/taxi
-```
-- Сделал локальную копию данных:
-```
-postgres@prim:~$ cp -a /tmp/taxi /tmp/taxi_local
 ```
 
 - Создал БД taxi и в ней таблицу taxi_trips для загружаемых данных:
@@ -155,14 +143,47 @@ CREATE TABLE
 
 - Наполнил таблицу тестовыми данными:
 ```
-postgres@prim:~$ time for f in /tmp/taxi_local/taxi*
+postgres@prim:~$ time for f in /tmp/taxi/taxi*
 do
         echo -e "Processing $f file..."
         psql -d taxi -U postgres -c "\\COPY taxi_trips FROM PROGRAM 'cat $f' CSV HEADER"
 done
 ```
+- Аналитические запросы на обеих нодах
 
 
+- Проверил ведомую ноду, действительно PostgreSQL в режиме read-only:
+```
+postgres@sec:~$ psql 
+psql (15.3 (Ubuntu 15.3-1.pgdg22.04+1))
+Type "help" for help.
+
+postgres=# create database ro;
+ERROR:  cannot execute CREATE DATABASE in a read-only transaction
+```
+
+- Сэмулировал switchover:
+```
+postgres@mon:~$ pg_autoctl perform switchover --pgdata ~/monitor --wait 10
+```
+
+- Первая нода упала, вторая промоутилась до ведущей:
+```
+postgres@mon:~$ pg_autoctl show state
+  Name |  Node |                                           Host:Port |        TLI: LSN |   Connection |      Reported State |      Assigned State
+-------+-------+-----------------------------------------------------+-----------------+--------------+---------------------+--------------------
+node_1 |     1 | prim.us-east4-a.c.disco-ascent-385720.internal:5432 |   1: 2/72FD6CF8 |       none ! |             demoted |          catchingup
+node_2 |     2 |  sec.us-east4-a.c.disco-ascent-385720.internal:5432 |   2: 2/93000110 |   read-write |        wait_primary |        wait_primary
+```
+
+- Через некоторое время ноды поменялись ролями:
+```
+postgres@mon:~$ pg_autoctl show state
+  Name |  Node |                                           Host:Port |        TLI: LSN |   Connection |      Reported State |      Assigned State
+-------+-------+-----------------------------------------------------+-----------------+--------------+---------------------+--------------------
+node_1 |     1 | prim.us-east4-a.c.disco-ascent-385720.internal:5432 |   2: 2/94000148 |    read-only |           secondary |           secondary
+node_2 |     2 |  sec.us-east4-a.c.disco-ascent-385720.internal:5432 |   2: 2/94000148 |   read-write |             primary |             primary
+```
 
 
 ---
