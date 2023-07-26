@@ -2,6 +2,8 @@
 # Курс `PostgreSQL Cloud Solutions`
 ### ДЗ #9 "Развернуть HA кластер" (Занятие "Работа с кластером высокой доступности")
 
+#### HA кластер на основе `pg_auto_failover`
+
 - Создал 3 VM в GCE (2 CPU, 8GB RAM, 30GB SSD, Ubuntu 22.04):
 ```
 for i in prim sec mon;
