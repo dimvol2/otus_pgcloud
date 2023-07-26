@@ -81,7 +81,7 @@ postgres@sec:~$ pg_autoctl create postgres \
    --run
 ```
 
-- Посмотрел состояние кластера, всё Ok, две ноды, ведущая и ведомая подключены и работают:
+- Посмотрел состояние кластера, всё Ok, две ноды, ведущая и ведомая, подключены и работают:
 ```
 postgres@mon:~$ pg_autoctl show state --pgdata ~/monitor
   Name |  Node |                                           Host:Port |       TLI: LSN |   Connection |      Reported State |      Assigned State
