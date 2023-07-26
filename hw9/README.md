@@ -217,7 +217,7 @@ order by 3;
 Time: 44485.784 ms (00:44.486)
 ```
 
-- Проверил ведомую ноду, действительно PostgreSQL в режиме read-only:
+- Проверил ведомую ноду, убедился, что PostgreSQL работает в режиме read-only:
 ```
 postgres@sec:~$ psql 
 psql (15.3 (Ubuntu 15.3-1.pgdg22.04+1))
@@ -232,7 +232,7 @@ postgres=# select pg_is_in_recovery();
 (1 row)
 ```
 
-- Состояние кластера:
+- Посмотрел состояние кластера:
 ```
 postgres@mon:~$ pg_autoctl show state --pgdata ~/monitor
   Name |  Node |                                           Host:Port |        TLI: LSN |   Connection |      Reported State |      Assigned State
@@ -255,7 +255,7 @@ node_1 |     1 | prim.us-east4-a.c.disco-ascent-385720.internal:5432 |   1: 5/FC
 node_2 |     2 |  sec.us-east4-a.c.disco-ascent-385720.internal:5432 |   2: 5/FCCDA92A |   read-write |        wait_primary |        wait_primary
 ```
 
-- Через некоторое время ноды поменялись ролями:
+- Через некоторое время стало видно, что ноды поменялись ролями:
 ```
 postgres@mon:~$ pg_autoctl show state
   Name |  Node |                                           Host:Port |        TLI: LSN |   Connection |      Reported State |      Assigned State
