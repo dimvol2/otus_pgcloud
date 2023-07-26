@@ -27,17 +27,6 @@ for i in prim sec mon;
   done;
 ```
 
-
-```
-sudo mkdir /etc/postgresql-common && echo "create_main_cluster = false" | sudo tee -a /etc/postgresql-common/createcluster.conf
-
-curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
-echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -c -s)-pgdg main" | sudo tee -a /etc/apt/sources.list.d/pgdg.list
-
-sudo apt update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends postgresql-15
-sudo DEBIAN_FRONTEND=noninteractive apt-get install pg-auto-failover-cli postgresql-15-auto-failover -y -q 
-```
-
 - Запустил сервер мониторинга HA кластера на ноде `mon`:
 ```
 postgres@mon:~$ pg_autoctl create monitor --no-ssl --pgdata ~/monitor --auth trust --run 
@@ -45,7 +34,7 @@ postgres@mon:~$ pg_autoctl create monitor --no-ssl --pgdata ~/monitor --auth tru
 
 - Сконфигурировал на ней доступ к PostgreSQL из локальной подсети:
 ```
-postgres@mon:~$ echo "host all all 10.150.0.0/24 trust">> ~/monitor/pg_hba.conf ^C
+postgres@mon:~$ echo "host all all 10.150.0.0/24 trust" >> ~/monitor/pg_hba.conf
 postgres@mon:~$ psql
 psql (15.3 (Ubuntu 15.3-1.pgdg22.04+1))
 Type "help" for help.
@@ -60,7 +49,7 @@ postgres=# select pg_reload_conf();
 
 - Получил URL мониторингового кластера для рабочих нод:
 ```
-postgres@mon:~$ pg_autoctl show uri --formation monitor
+postgres@mon:~$ pg_autoctl show uri --formation monitor --pgdata ~/monitor
 postgres://autoctl_node@mon:5432/pg_auto_failover?sslmode=prefer
 ```
 
@@ -76,10 +65,10 @@ postgres@prim:~$ pg_autoctl create postgres \
 
 - Посмотрел конфигурацию кластера, нода добавилась:
 ```
-postgres@mon:~$ pg_autoctl show state
+postgres@mon:~$ pg_autoctl show state --pgdata ~/monitor
   Name |  Node |                                           Host:Port |       TLI: LSN |   Connection |      Reported State |      Assigned State
 -------+-------+-----------------------------------------------------+----------------+--------------+---------------------+--------------------
-node_1 |     1 | prim.us-east4-a.c.disco-ascent-385720.internal:5432 |   1: 0/1557AB8 |   read-write |              single |              single
+node_1 |     1 | prim.us-east4-a.c.disco-ascent-385720.internal:5432 |   1: 0/156E500 |   read-write |              single |              single
 ```
 
 - Поднял PostgreSQL На ведомой ноде `sec`, включив её в HA кластер:
@@ -94,7 +83,7 @@ postgres@sec:~$ pg_autoctl create postgres \
 
 - Посмотрел состояние кластера, всё Ok, две ноды, ведущая и ведомая подключены и работают:
 ```
-postgres@mon:~$ pg_autoctl show state
+postgres@mon:~$ pg_autoctl show state --pgdata ~/monitor
   Name |  Node |                                           Host:Port |       TLI: LSN |   Connection |      Reported State |      Assigned State
 -------+-------+-----------------------------------------------------+----------------+--------------+---------------------+--------------------
 node_1 |     1 | prim.us-east4-a.c.disco-ascent-385720.internal:5432 |   1: 0/3000110 |   read-write |             primary |             primary
@@ -110,7 +99,7 @@ root@prim:~# curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-ke
 root@prim:~# apt update && apt install fuse gcsfuse -y && apt upgrade -y
 ```
 
-- Смонтировал каталог с набором данных в локальную директорию:
+- Смонтировал каталог с набором данных (10GB чикагского такси) в локальную директорию:
 ```
 root@prim:~# mkdir /tmp/taxi && gcsfuse -o allow_other,ro chicago10 /tmp/taxi
 I0725 20:47:01.794268 2023/07/25 20:47:01.794238 Start gcsfuse/1.0.0 (Go version go1.20.4) for app "" using mount point: /tmp/taxi
@@ -161,7 +150,14 @@ do
         echo -e "Processing $f file..."
         psql -d taxi -U postgres -c "\\COPY taxi_trips FROM PROGRAM 'cat $f' CSV HEADER"
 done
+
+[skipped]
+
+real	5m6.737s
+user	0m4.970s
+sys	0m19.193s
 ```
+
 - Сделал аналитический запрос на обеих нодах:
 ```
 postgres@prim:~$ psql -d taxi
@@ -189,7 +185,7 @@ order by 3;
  Cash         |            0 | 17231871
 (11 rows)
 
-Time: 84000.100 ms (01:24.000)
+Time: 71023.602 ms (01:11.024)
 ```
 
 ```
@@ -218,10 +214,8 @@ order by 3;
  Cash         |            0 | 17231871
 (11 rows)
 
-Time: 45165.624 ms (00:45.166)
+Time: 44485.784 ms (00:44.486)
 ```
-
-
 
 - Проверил ведомую ноду, действительно PostgreSQL в режиме read-only:
 ```
@@ -231,6 +225,20 @@ Type "help" for help.
 
 postgres=# create database ro;
 ERROR:  cannot execute CREATE DATABASE in a read-only transaction
+postgres=# select pg_is_in_recovery();
+ pg_is_in_recovery 
+-------------------
+ t
+(1 row)
+```
+
+- Состояние кластера:
+```
+postgres@mon:~$ pg_autoctl show state --pgdata ~/monitor
+  Name |  Node |                                           Host:Port |        TLI: LSN |   Connection |      Reported State |      Assigned State
+-------+-------+-----------------------------------------------------+-----------------+--------------+---------------------+--------------------
+node_1 |     1 | prim.us-east4-a.c.disco-ascent-385720.internal:5432 |   1: 5/FCCDA7C0 |   read-write |             primary |             primary
+node_2 |     2 |  sec.us-east4-a.c.disco-ascent-385720.internal:5432 |   1: 5/FCCDA7C0 |    read-only |           secondary |           secondary
 ```
 
 - Сэмулировал switchover:
@@ -240,11 +248,11 @@ postgres@mon:~$ pg_autoctl perform switchover --pgdata ~/monitor --wait 10
 
 - Первая нода упала, вторая промоутилась до ведущей:
 ```
-postgres@mon:~$ pg_autoctl show state
+postgres@mon:~$ pg_autoctl show state --pgdata ~/monitor
   Name |  Node |                                           Host:Port |        TLI: LSN |   Connection |      Reported State |      Assigned State
 -------+-------+-----------------------------------------------------+-----------------+--------------+---------------------+--------------------
-node_1 |     1 | prim.us-east4-a.c.disco-ascent-385720.internal:5432 |   1: 2/72FD6CF8 |       none ! |             demoted |          catchingup
-node_2 |     2 |  sec.us-east4-a.c.disco-ascent-385720.internal:5432 |   2: 2/93000110 |   read-write |        wait_primary |        wait_primary
+node_1 |     1 | prim.us-east4-a.c.disco-ascent-385720.internal:5432 |   1: 5/FCCDA7C0 |       none ! |             demoted |          catchingup
+node_2 |     2 |  sec.us-east4-a.c.disco-ascent-385720.internal:5432 |   2: 5/FCCDA92A |   read-write |        wait_primary |        wait_primary
 ```
 
 - Через некоторое время ноды поменялись ролями:
@@ -252,9 +260,63 @@ node_2 |     2 |  sec.us-east4-a.c.disco-ascent-385720.internal:5432 |   2: 2/93
 postgres@mon:~$ pg_autoctl show state
   Name |  Node |                                           Host:Port |        TLI: LSN |   Connection |      Reported State |      Assigned State
 -------+-------+-----------------------------------------------------+-----------------+--------------+---------------------+--------------------
-node_1 |     1 | prim.us-east4-a.c.disco-ascent-385720.internal:5432 |   2: 2/94000148 |    read-only |           secondary |           secondary
-node_2 |     2 |  sec.us-east4-a.c.disco-ascent-385720.internal:5432 |   2: 2/94000148 |   read-write |             primary |             primary
+node_1 |     1 | prim.us-east4-a.c.disco-ascent-385720.internal:5432 |   2: 5/FCCDAB98 |    read-only |           secondary |           secondary
+node_2 |     2 |  sec.us-east4-a.c.disco-ascent-385720.internal:5432 |   2: 5/FCCDAB98 |   read-write |             primary |             primary
 ```
 
+- Ещё один switchover, успешно:
+```
+postgres@mon:~$ pg_autoctl perform switchover --pgdata ~/monitor --wait 30
+
+postgres@mon:~$ pg_autoctl show state --pgdata ~/monitor
+  Name |  Node |                                           Host:Port |        TLI: LSN |   Connection |      Reported State |      Assigned State
+-------+-------+-----------------------------------------------------+-----------------+--------------+---------------------+--------------------
+node_1 |     1 | prim.us-east4-a.c.disco-ascent-385720.internal:5432 |   3: 5/FCCDAD98 |   read-write |        wait_primary |        wait_primary
+node_2 |     2 |  sec.us-east4-a.c.disco-ascent-385720.internal:5432 |   2: 5/FCCDABD0 |         none |             demoted |          catchingup
+
+postgres@mon:~$ pg_autoctl show state --pgdata ~/monitor
+  Name |  Node |                                           Host:Port |        TLI: LSN |   Connection |      Reported State |      Assigned State
+-------+-------+-----------------------------------------------------+-----------------+--------------+---------------------+--------------------
+node_1 |     1 | prim.us-east4-a.c.disco-ascent-385720.internal:5432 |   3: 5/FE000110 |   read-write |             primary |             primary
+node_2 |     2 |  sec.us-east4-a.c.disco-ascent-385720.internal:5432 |   3: 5/FE000110 |    read-only |           secondary |           secondary
+```
+
+- Сымитировал failover: закрыл исходящие соединения по порту 5432 с текущей ведущей ноды
+  (хост `prim`):
+```
+bbc@prim:~$ sudo ufw enable
+bbc@prim:~$ sudo ufw allow 22/tcp
+bbc@prim:~$ sudo ufw deny out 5432
+```
+
+- Видно, что соединение с одной нодой потеряно, вторая готовится стать
+  ведущей:
+```
+postgres@mon:~$ pg_autoctl show state --pgdata ~/monitor
+  Name |  Node |                                           Host:Port |        TLI: LSN |   Connection |      Reported State |      Assigned State
+-------+-------+-----------------------------------------------------+-----------------+--------------+---------------------+--------------------
+node_1 |     1 | prim.us-east4-a.c.disco-ascent-385720.internal:5432 |   3: 5/FE000148 | read-write ! |             primary |             demoted
+node_2 |     2 |  sec.us-east4-a.c.disco-ascent-385720.internal:5432 |   4: 5/FE0022C0 |   read-write |        wait_primary |        wait_primary
+```
+
+- Отключаем firewall на ноде `prim`, чтобы управляющая нода опять стала
+  получать информацию от рабочей ноды:
+```
+bbc@prim:~$ sudo ufw disable
+```
+
+- Через некоторое время кластер восстановил состояние, роли нод поменялись
+  местами:
+```
+postgres@mon:~$ pg_autoctl show state --pgdata ~/monitor
+  Name |  Node |                                           Host:Port |   TLI: LSN |   Connection |      Reported State |      Assigned State
+-------+-------+-----------------------------------------------------+------------+--------------+---------------------+--------------------
+node_1 |     1 | prim.us-east4-a.c.disco-ascent-385720.internal:5432 |   4: 6/148 |    read-only |           secondary |           secondary
+node_2 |     2 |  sec.us-east4-a.c.disco-ascent-385720.internal:5432 |   4: 6/148 |   read-write |             primary |             primary
+```
+
+Таким образом, HA кластер на основе `pg_auto_failover` был успешно
+развёрнут, наполнен данными, а также было протестировано плановое переключение
+роли ведущего сервера на другую ноду и сымитирован отказ ведущей ноды
 
 ---
