@@ -12,7 +12,21 @@ for i in prim sec mon;
   done;
 ```
 
-- Установил PostgreSQL и pg_auto_failover на всех нодах:
+- Установил PostgreSQL и pg_auto_failover на всех нодах (ведущая, ведомая и
+  управляющая):
+```
+for i in prim sec mon;
+  do gcloud compute ssh $i --zone=us-east4-a \
+    --command='sudo mkdir /etc/postgresql-common && \
+    echo "create_main_cluster = false" | sudo tee -a /etc/postgresql-common/createcluster.conf && \
+    curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add - && \
+    echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -c -s)-pgdg main" | sudo tee -a /etc/apt/sources.list.d/pgdg.list && \
+    sudo apt update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends postgresql-15 && \
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install pg-auto-failover-cli postgresql-15-auto-failover -y -q' \
+    --zone=us-east4-a &\
+  done;
+```
+
 
 ```
 sudo mkdir /etc/postgresql-common && echo "create_main_cluster = false" | sudo tee -a /etc/postgresql-common/createcluster.conf
