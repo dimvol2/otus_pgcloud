@@ -31,6 +31,7 @@ cd cockroach-v23.1.5.linux-amd64
 mkdir certs my-safe-directory
 ./cockroach cert create-ca --certs-dir=certs --ca-key=my-safe-directory/ca.key
 ./cockroach cert create-node localhost cc1 cc2 cc3 --certs-dir=certs --ca-key=my-safe-directory/ca.key --overwrite
+./cockroach cert create-client root --certs-dir=certs --ca-key=my-safe-directory/ca.key
 ```
 
 - Раскатал сертификаты на все ноды:
