@@ -99,31 +99,31 @@ Time: 26ms total (execution 26ms / network 0ms)
 root@localhost:26257/defaultdb> \c taxi                                                                                                        
 using new connection URL: postgresql://root@localhost:26257/taxi?application_name=%24+cockroach+sql&connect_timeout=15&sslcert=certs%2Fclient.root.crt&sslkey=certs%2Fclient.root.key&sslmode=verify-full&sslrootcert=certs%2Fca.crt
 root@localhost:26257/taxi>create table taxi_trips (                                                                                      
-                             -> unique_key text,                                                                                               
-                             -> taxi_id text,                                                                                                  
-                             -> trip_start_timestamp TIMESTAMP,                                                                                
-                             -> trip_end_timestamp TIMESTAMP,                                                                                  
-                             -> trip_seconds bigint,                                                                                           
-                             -> trip_miles numeric,                                                                                            
-                             -> pickup_census_tract bigint,                                                                                    
-                             -> dropoff_census_tract bigint,                                                                                   
-                             -> pickup_community_area bigint,                                                                                  
-                             -> dropoff_community_area bigint,                                                                                 
-                             -> fare numeric,                                                                                                  
-                             -> tips numeric,                                                                                                  
-                             -> tolls numeric,                                                                                                 
-                             -> extras numeric,                                                                                                
-                             -> trip_total numeric,                                                                                            
-                             -> payment_type text,                                                                                             
-                             -> company text,                                                                                                  
-                             -> pickup_latitude numeric,                                                                                       
-                             -> pickup_longitude numeric,                                                                                      
-                             -> pickup_location text,                                                                                          
-                             -> dropoff_latitude numeric,                                                                                      
-                             -> dropoff_longitude numeric,                                                                                     
-                             -> dropoff_location text                                                                                          
-                             -> );                                                                                                             
-                             ->                                                                                                                
+                              unique_key text,                                                                                               
+                              taxi_id text,                                                                                                  
+                              trip_start_timestamp TIMESTAMP,                                                                                
+                              trip_end_timestamp TIMESTAMP,                                                                                  
+                              trip_seconds bigint,                                                                                           
+                              trip_miles numeric,                                                                                            
+                              pickup_census_tract bigint,                                                                                    
+                              dropoff_census_tract bigint,                                                                                   
+                              pickup_community_area bigint,                                                                                  
+                              dropoff_community_area bigint,                                                                                 
+                              fare numeric,                                                                                                  
+                              tips numeric,                                                                                                  
+                              tolls numeric,                                                                                                 
+                              extras numeric,                                                                                                
+                              trip_total numeric,                                                                                            
+                              payment_type text,                                                                                             
+                              company text,                                                                                                  
+                              pickup_latitude numeric,                                                                                       
+                              pickup_longitude numeric,                                                                                      
+                              pickup_location text,                                                                                          
+                              dropoff_latitude numeric,                                                                                      
+                              dropoff_longitude numeric,                                                                                     
+                              dropoff_location text                                                                                          
+                              );                                                                                                             
+                                                                                                                                             
 CREATE TABLE
 
 Time: 23ms total (execution 23ms / network 0ms)
@@ -132,11 +132,12 @@ Time: 23ms total (execution 23ms / network 0ms)
 Залил 10GB данных из бакета GCP:
 ```
 root@localhost:26257/taxi> import into taxi_trips                                                                                              
-                        -> (unique_key,taxi_id,trip_start_timestamp,trip_end_timestamp,trip_seconds,trip_miles,pickup_census_tract,dropoff_cens
-                        -> us_tract,pickup_community_area,dropoff_community_area,fare,tips,tolls,extras,trip_total,payment_type,company,pickup_
-                        -> latitude,pickup_longitude,pickup_location,dropoff_latitude,dropoff_longitude,dropoff_location)                      
-                        -> CSV DATA ('gs://chicago10/taxi.csv.0000000000*?AUTH=implicit')                                                      
-                        -> WITH DELIMITER = ',', SKIP = '1';                                                                                   
+                         (unique_key,taxi_id,trip_start_timestamp,trip_end_timestamp,trip_seconds,trip_miles,pickup_census_tract,
+                         dropoff_census_tract,pickup_community_area,dropoff_community_area,fare,tips,tolls,extras,trip_total,
+                         payment_type,company,pickup_latitude,pickup_longitude,pickup_location,dropoff_latitude,dropoff_longitude,
+                         dropoff_location)                      
+                         CSV DATA ('gs://chicago10/taxi.csv.0000000000*?AUTH=implicit')                                                      
+                         WITH DELIMITER = ',', SKIP = '1';                                                                                   
 
         job_id       |  status   | fraction_completed |   rows   | index_entries |   bytes
 ---------------------+-----------+--------------------+----------+---------------+-------------
@@ -149,10 +150,10 @@ Time: 317.714s total (execution 317.713s / network 0.001s)
 - Потестировал аналитический запрос:
 ```
 root@localhost:26257/taxi> SELECT payment_type, round(sum(tips)/sum(trip_total)*100, 0) + 0 as tips_percent, count(*) as c                     
-                        -> FROM taxi_trips                                                                                                     
-                        -> group by payment_type                                                                                               
-                        -> order by 3;                                                                                                         
-                        ->                                                                                                                     
+                         FROM taxi_trips                                                                                                     
+                         group by payment_type                                                                                               
+                         order by 3;                                                                                                         
+                                                                                                                                             
   payment_type | tips_percent |    c
 ---------------+--------------+-----------
   Prepaid      |            0 |        6
@@ -171,9 +172,9 @@ root@localhost:26257/taxi> SELECT payment_type, round(sum(tips)/sum(trip_total)*
 Time: 27.895s total (execution 27.894s / network 0.001s)
 
 root@localhost:26257/taxi> SELECT payment_type, round(sum(tips)/sum(trip_total)*100, 0) + 0 as tips_percent, count(*) as c                     
-                        -> FROM taxi_trips                                                                                                     
-                        -> group by payment_type                                                                                               
-                        -> order by 3;                                                                                                         
+                         FROM taxi_trips                                                                                                     
+                         group by payment_type                                                                                               
+                         order by 3;                                                                                                         
   payment_type | tips_percent |    c
 ---------------+--------------+-----------
   Prepaid      |            0 |        6
