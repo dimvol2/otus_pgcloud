@@ -349,8 +349,6 @@ gcloud compute instances create haproxy2 \
   --zone=us-west1-a
 ```
 
-#gcloud compute ssh haproxy1 --zone=us-east1-b
-
 - Установил haproxy 2.8 и клиент PostgreSQL со вспомогательными утилитами на обоих ВМ (haproxy1, haproxy2)
 ```
 DEBIAN_FRONTEND=noninteractive apt install -qy --no-install-recommends software-properties-common && \
@@ -358,8 +356,6 @@ add-apt-repository -y ppa:vbernat/haproxy-2.8 && apt install -qy haproxy=2.8.*
 
 DEBIAN_FRONTEND=noninteractive apt -qy update && apt -yq install postgresql-client-common postgresql-client
 ```
-#проверка, не нужна??
-##psql -p 6432 -d otus -h 10.142.0.7 -U postgres
 - Сконфигурировал haproxy на обоих ВМ
 ```
 cat > /etc/haproxy/haproxy.cfg <<EOF
@@ -436,10 +432,6 @@ EOF
 systemctl restart haproxy
 ```
 
-
-HAProxy_screenshot.png
-http://34.131.44.32:7000/
-
 - Проверил работу одного из haproxy в ro- и rw-режимах
 ```
 root@haproxy1:~# psql -h 127.0.0.1 -d otus -U postgres -p 5433
@@ -470,7 +462,7 @@ otus=# \l haproxy
 (1 row)
 ```
 
-- Настроил Load Balancer по инструкции
+* Настраиваем Load Balancer по инструкции
 
 https://cloud.google.com/load-balancing/docs/tcp/setting-up-tcp
 
