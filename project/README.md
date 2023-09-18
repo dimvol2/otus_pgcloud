@@ -5,18 +5,11 @@
 
 КАРТИНКА
 
-- Разворачиваю кластер в локациях: South Carolina, Oregon и London
+- Разворачиваю кластер в ДЦ GCP в зонах South Carolina, Oregon и Iowa
 ```
-#gcp_zones=("us-east1-b" "us-west1-a" "europe-west2-c")
 gcp_zones=("us-east1-b" "us-west1-a" "us-central1-c")
 
 ```
-#asia-south2 - Dehli
-#us-east1 - South Carolina
-#us-west1 - Oregon
-#europe-west2 - London
-#us-central1 - Iowa
-
 - Создал три ВМ в GCP на основе Ubintu 22.04
 ```
 for i in "${!gcp_zones[@]}";
@@ -294,9 +287,6 @@ CREATE DATABASE
 
 надо ли этот pgbench??
 
-postgres=# create database otus;
-CREATE DATABASE
-```
 ```
 root@pgsql2:~# pgbench -U postgres -p 6432 -i -d otus -h 127.0.0.1
 Password: 
