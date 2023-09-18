@@ -505,7 +505,7 @@ number of failed transactions: 0 (0.000%)
 latency average = 274.113 ms
 latency stddev = 166.954 ms
 average connection time = 11.263 ms
-tps = <span style="color: red;">69.546483</span> (including reconnection times)
+tps = 69.546483 (including reconnection times)
 ```
 
 - Развернул ВМ с которой будут проводится remote-тесты HA
@@ -537,7 +537,7 @@ number of transactions actually processed: 464
 latency average = 2590.295 ms
 latency stddev = 1288.548 ms
 initial connection time = 1246.551 ms
-tps = <span style="color: red;">7.563799</span> (without initial connection time)
+tps = 7.563799 (without initial connection time)
 ```
 
 - Получил адрес load balancera
@@ -562,12 +562,12 @@ number of transactions actually processed: 462
 latency average = 2067.261 ms
 latency stddev = 1096.623 ms
 initial connection time = 756.099 ms
-tps = <span style="color: red;">7.555153</span> (without initial connection time)
+tps = 7.555153 (without initial connection time)
 ```
 
 - Провёл тест с московского локалхоста через европейский vpn:
 ```
-moscow-home-provider:~# pgbench -U postgres -p 5432 -c 20 -j 10 -T 60 -P10 -d otus -h 34.98.115.194
+ pgbench -U postgres -p 5432 -c 20 -j 10 -T 60 -P10 -d otus -h 34.98.115.194
 Password: 
 
 [skipped output]
@@ -580,11 +580,132 @@ number of transactions actually processed: 149
 latency average = 3743.454 ms
 latency stddev = 1702.212 ms
 initial connection time = 1812.978 ms
-tps = <span style="color: red;">2.448568</span> (without initial connection time)
+tps = 2.448568 (without initial connection time)
+```
+
+- Остановил rw-ноду кластера patroni
+```
+ gcloud compute instances stop pgsql2 --zone=us-central1-a
+```
+
+- Кластер работает, есть новая нода-лидер
+```
+root@pgsql0:~# patronictl -c /etc/patroni.yml list
++ Cluster: patroni ----+---------+-----------+----+-----------+
+| Member | Host        | Role    | State     | TL | Lag in MB |
++--------+-------------+---------+-----------+----+-----------+
+| pgsql0 | 10.142.0.13 | Replica | streaming |  2 |         0 |
+| pgsql1 | 10.138.0.16 | Leader  | running   |  2 |           |
++--------+-------------+---------+-----------+----+-----------+
+```
+
+- Провёл тест с клиентской ВМ через load balancer
+```
+root@client:~# pgbench -U postgres -p 5432 -c 20 -j 10 -T 60 -P10 -d otus -h 34.98.115.194
+Password: 
+
+[skipped output]
+scaling factor: 1
+query mode: simple
+number of clients: 20
+number of threads: 10
+duration: 60 s
+number of transactions actually processed: 309
+latency average = 2689.955 ms
+latency stddev = 1294.228 ms
+initial connection time = 1071.243 ms
+tps = 5.040593 (without initial connection time)
+```
+
+- Проверил текущую конфигурацию load balancer, оба haproxy живы
+```
+gcloud compute backend-services get-health lb-haproxy-rw --global
+---
+backend: https://www.googleapis.com/compute/v1/projects/disco-ascent-385720/zones/us-west1-a/instanceGroups/us-ig-west
+status:
+  healthStatus:
+  - healthState: HEALTHY
+    instance: https://www.googleapis.com/compute/v1/projects/disco-ascent-385720/zones/us-west1-a/instances/haproxy2
+    ipAddress: 10.138.0.17
+    port: 5432
+  kind: compute#backendServiceGroupHealth
+---
+backend: https://www.googleapis.com/compute/v1/projects/disco-ascent-385720/zones/us-east1-b/instanceGroups/us-ig-east
+status:
+  healthStatus:
+  - healthState: HEALTHY
+    instance: https://www.googleapis.com/compute/v1/projects/disco-ascent-385720/zones/us-east1-b/instances/haproxy1
+    ipAddress: 10.142.0.14
+    port: 5432
+  kind: compute#backendServiceGroupHealth
+```
+
+- Остановил haproxy2, убедился, что в load balancer осталась одна живая группа инстансов
+```
+gcloud compute instances stop haproxy2 --zone=us-west1-a 
+
+gcloud compute backend-services get-health lb-haproxy-rw --global
+
+---
+backend: https://www.googleapis.com/compute/v1/projects/disco-ascent-385720/zones/us-west1-a/instanceGroups/us-ig-west
+status:
+  kind: compute#backendServiceGroupHealth
+---
+backend: https://www.googleapis.com/compute/v1/projects/disco-ascent-385720/zones/us-east1-b/instanceGroups/us-ig-east
+status:
+  healthStatus:
+  - healthState: HEALTHY
+    instance: https://www.googleapis.com/compute/v1/projects/disco-ascent-385720/zones/us-east1-b/instances/haproxy1
+    ipAddress: 10.142.0.14
+    port: 5432
+  kind: compute#backendServiceGroupHealth
 
 ```
 
-gcloud compute instances stop pgsql0 --zone=us-east1-b
+- Провёл тест в конфигурации с остановленным haproxy2
+```
+root@client:~# pgbench -U postgres -p 5432 -c 20 -j 10 -T 60 -P10 -d otus -h 34.98.115.194
+Password: 
+
+[skipped output]
+scaling factor: 1
+query mode: simple
+number of clients: 20
+number of threads: 10
+duration: 60 s
+number of transactions actually processed: 303
+latency average = 2944.660 ms
+latency stddev = 1402.763 ms
+initial connection time = 1078.826 ms
+tps = 4.945086 (without initial connection time)
+```
+
+- Остановил haproxy1, убедился, что в load balancer не осталось живых
+  инстансов и pgbench не запускается
+```
+gcloud compute instances stop haproxy1 --zone=us-east1-b
+
+gcloud compute backend-services get-health lb-haproxy-rw --global
+---
+backend: https://www.googleapis.com/compute/v1/projects/disco-ascent-385720/zones/us-west1-a/instanceGroups/us-ig-west
+status:
+  kind: compute#backendServiceGroupHealth
+---
+backend: https://www.googleapis.com/compute/v1/projects/disco-ascent-385720/zones/us-east1-b/instanceGroups/us-ig-east
+status:
+  kind: compute#backendServiceGroupHealth
+
+
+root@client:~# pgbench -U postgres -p 5432 -c 20 -j 10 -T 60 -P10 -d otus -h 34.98.115.194
+pgbench: error: connection to server at "34.98.115.194", port 5432 failed: server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+```
+
+- Запустил haproxy2, убедился в ее наличии среди живых в load balancer
+```
+
+```
 
 /*
 bash-5.1$ gcloud compute backend-services get-health lb-haproxy-ro --global
