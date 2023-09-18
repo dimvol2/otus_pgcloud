@@ -285,6 +285,13 @@ add-apt-repository -y ppa:vbernat/haproxy-2.8 && apt install -qy haproxy=2.8.*
 
 DEBIAN_FRONTEND=noninteractive apt -qy update && apt -yq install postgresql-client-common postgresql-client
 ```
+
+- Остановил и убрал из автозапуска сервис postgresql, чтобы он не мешал
+  стартовать haproxy при перезагрузке ВМ
+```
+systemctl stop postgresql && systemctl disable postgresql
+```
+
 - Сконфигурировал haproxy на обоих ВМ
 ```
 cat > /etc/haproxy/haproxy.cfg <<EOF
@@ -662,7 +669,7 @@ status:
 
 ```
 
-- Провёл тест в конфигурации с остановленным haproxy2
+- Провёл тест в конфигурации с одним рабочим haproxy1
 ```
 root@client:~# pgbench -U postgres -p 5432 -c 20 -j 10 -T 60 -P10 -d otus -h 34.98.115.194
 Password: 
@@ -701,220 +708,45 @@ pgbench: error: connection to server at "34.98.115.194", port 5432 failed: serve
 	This probably means the server terminated abnormally
 	before or while processing the request.
 ```
-
 - Запустил haproxy2, убедился в ее наличии среди живых в load balancer
 ```
+gcloud compute instances start haproxy2 --zone=us-west1-a
 
+gcloud compute backend-services get-health lb-haproxy-rw --global
+---
+backend: https://www.googleapis.com/compute/v1/projects/disco-ascent-385720/zones/us-west1-a/instanceGroups/us-ig-west
+status:
+  healthStatus:
+  - healthState: HEALTHY
+    instance: https://www.googleapis.com/compute/v1/projects/disco-ascent-385720/zones/us-west1-a/instances/haproxy2
+    ipAddress: 10.138.0.17
+    port: 5432
+  kind: compute#backendServiceGroupHealth
+---
+backend: https://www.googleapis.com/compute/v1/projects/disco-ascent-385720/zones/us-east1-b/instanceGroups/us-ig-east
+status:
+  kind: compute#backendServiceGroupHealth
 ```
 
-/*
-bash-5.1$ gcloud compute backend-services get-health lb-haproxy-ro --global
----
-backend: https://www.googleapis.com/compute/v1/projects/disco-ascent-385720/zones/us-west1-a/instanceGroups/us-ig-west
-status:
-  healthStatus:
-  - healthState: UNHEALTHY
-    instance: https://www.googleapis.com/compute/v1/projects/disco-ascent-385720/zones/us-west1-a/instances/haproxy2
-    ipAddress: 10.138.0.9
-    port: 5433
-  kind: compute#backendServiceGroupHealth
----
-backend: https://www.googleapis.com/compute/v1/projects/disco-ascent-385720/zones/us-east1-b/instanceGroups/us-ig-east
-status:
-  healthStatus:
-  - healthState: HEALTHY
-    instance: https://www.googleapis.com/compute/v1/projects/disco-ascent-385720/zones/us-east1-b/instances/haproxy1
-    ipAddress: 10.190.0.3
-    port: 5433
-  kind: compute#backendServiceGroupHealth
-
-
-bash-5.1$ gcloud compute backend-services get-health lb-haproxy-ro --global
----
-backend: https://www.googleapis.com/compute/v1/projects/disco-ascent-385720/zones/us-west1-a/instanceGroups/us-ig-west
-status:
-  healthStatus:
-  - healthState: HEALTHY
-    instance: https://www.googleapis.com/compute/v1/projects/disco-ascent-385720/zones/us-west1-a/instances/haproxy2
-    ipAddress: 10.138.0.9
-    port: 5433
-  kind: compute#backendServiceGroupHealth
----
-backend: https://www.googleapis.com/compute/v1/projects/disco-ascent-385720/zones/us-east1-b/instanceGroups/us-ig-east
-status:
-  healthStatus:
-  - healthState: HEALTHY
-    instance: https://www.googleapis.com/compute/v1/projects/disco-ascent-385720/zones/us-east1-b/instances/haproxy1
-    ipAddress: 10.190.0.3
-    port: 5433
-  kind: compute#backendServiceGroupHealth
-
-
-*/
-
-
-bash-5.1$ pgbench -p 5432 -i -d otus -h 35.244.159.129 -U postgres
+- Провёл тест в конфигурации с одним рабочим haproxy2
+```
+root@client:~# pgbench -U postgres -p 5432 -c 20 -j 10 -T 60 -P10 -d otus -h 34.98.115.194
 Password: 
-dropping old tables...
-NOTICE:  table "pgbench_accounts" does not exist, skipping
-NOTICE:  table "pgbench_branches" does not exist, skipping
-NOTICE:  table "pgbench_history" does not exist, skipping
-NOTICE:  table "pgbench_tellers" does not exist, skipping
-creating tables...
-generating data (client-side)...
-100000 of 100000 tuples (100%) done (elapsed 0.49 s, remaining 0.00 s)
-vacuuming...
-creating primary keys...
-done in 25.02 s (drop tables 0.80 s, create tables 3.18 s, client-side generate 14.98 s, vacuum 3.25 s, primary keys 2.80 s).
 
-
-через LB->Dehli->London
-bash-5.1$ pgbench -p 5432 -c 20 -C -T 300 -P 1 -d otus -h 35.244.159.129 -U postgres
-..
+[skipped output]
 scaling factor: 1
 query mode: simple
 number of clients: 20
-number of threads: 1
-duration: 300 s
-number of transactions actually processed: 37
-latency average = 8911.781 ms
-latency stddev = 709.599 ms
-average connection time = 5735.139 ms
-tps = 0.119890 (including reconnection times)
-pgbench: fatal: Run was aborted; the above results are incomplete.
+number of threads: 10
+duration: 60 s
+number of transactions actually processed: 308
+latency average = 2565.187 ms
+latency stddev = 1207.139 ms
+initial connection time = 1093.876 ms
+tps = 5.034517 (without initial connection time)
+```
 
-не впечатляет
-
-с haproxy тоже:
-
-Dehli->London
-bash-5.1$ pgbench -p 5432 -c 20 -C -T 300 -P 1 -d otus -h 127.0.0.1 -U postgres
-scaling factor: 1
-query mode: simple
-number of clients: 20
-number of threads: 1
-duration: 300 s
-number of transactions actually processed: 121
-latency average = 32549.858 ms
-latency stddev = 15861.208 ms
-average connection time = 1958.430 ms
-tps = 0.392332 (including reconnection times)
-pgbench: fatal: Run was aborted; the above results are incomplete.
+#### Выводы
 
 
-с haproxy
-Oregon->London
-bash-5.1$ pgbench -p 5432 -c 20 -C -T 300 -P 1 -d otus -h 127.0.0.1 -U postgres
-scaling factor: 1
-query mode: simple
-number of clients: 20
-number of threads: 1
-duration: 300 s
-number of transactions actually processed: 357
-latency average = 14157.009 ms
-latency stddev = 8342.394 ms
-average connection time = 647.713 ms
-tps = 1.173501 (including reconnection times)
-pgbench: fatal: Run was aborted; the above results are incomplete.
-
-
-перевёл лидера в Oregon
-
-root@pgsql2:~# patronictl -c /etc/patroni.yml list
-+ Cluster: patroni ----+---------+-----------+----+-----------+
-| Member | Host        | Role    | State     | TL | Lag in MB |
-+--------+-------------+---------+-----------+----+-----------+
-| pgsql0 | 10.142.0.9  | Replica | streaming |  1 |         0 |
-| pgsql1 | 10.138.0.11 | Replica | streaming |  1 |         0 |
-| pgsql2 | 10.154.0.10 | Leader  | running   |  1 |           |
-+--------+-------------+---------+-----------+----+-----------+
-root@pgsql2:~# patronictl -c /etc/patroni.yml switchover --leader pgsql2 --candidate pgsql1 --scheduled now --force
-Current cluster topology
-+ Cluster: patroni ----+---------+-----------+----+-----------+
-| Member | Host        | Role    | State     | TL | Lag in MB |
-+--------+-------------+---------+-----------+----+-----------+
-| pgsql0 | 10.142.0.9  | Replica | streaming |  1 |         0 |
-| pgsql1 | 10.138.0.11 | Replica | streaming |  1 |         0 |
-| pgsql2 | 10.154.0.10 | Leader  | running   |  1 |           |
-+--------+-------------+---------+-----------+----+-----------+
-2023-09-17 00:43:14.21773 Successfully switched over to "pgsql1"
-+ Cluster: patroni ----+---------+-----------+----+-----------+
-| Member | Host        | Role    | State     | TL | Lag in MB |
-+--------+-------------+---------+-----------+----+-----------+
-| pgsql0 | 10.142.0.9  | Replica | streaming |  1 |         0 |
-| pgsql1 | 10.138.0.11 | Leader  | running   |  1 |           |
-| pgsql2 | 10.154.0.10 | Replica | stopped   |    |   unknown |
-+--------+-------------+---------+-----------+----+-----------+
-root@pgsql2:~# patronictl -c /etc/patroni.yml list
-+ Cluster: patroni ----+---------+-----------+----+-----------+
-| Member | Host        | Role    | State     | TL | Lag in MB |
-+--------+-------------+---------+-----------+----+-----------+
-| pgsql0 | 10.142.0.9  | Replica | streaming |  1 |         0 |
-| pgsql1 | 10.138.0.11 | Leader  | running   |  2 |           |
-| pgsql2 | 10.154.0.10 | Replica | stopped   |    |   unknown |
-+--------+-------------+---------+-----------+----+-----------+
-root@pgsql2:~# patronictl -c /etc/patroni.yml list
-+ Cluster: patroni ----+---------+-----------+----+-----------+
-| Member | Host        | Role    | State     | TL | Lag in MB |
-+--------+-------------+---------+-----------+----+-----------+
-| pgsql0 | 10.142.0.9  | Replica | streaming |  1 |         0 |
-| pgsql1 | 10.138.0.11 | Leader  | running   |  2 |           |
-| pgsql2 | 10.154.0.10 | Replica | streaming |  2 |         0 |
-+--------+-------------+---------+-----------+----+-----------+
-
-О! Внутри одного ДЦ:
-
->pgbench -p 5432 -c 20 -C -T 300 -P 1 -d otus -h 127.0.0.1 -U postgres
-scaling factor: 1
-query mode: simple
-number of clients: 20
-number of threads: 1
-duration: 300 s
-number of transactions actually processed: 8506
-latency average = 677.491 ms
-latency stddev = 605.263 ms
-average connection time = 27.697 ms
-tps = 28.336286 (including reconnection times)
-
-
-остановили haproxy в Азии
-root@haproxy1:~# systemctl stop haproxy
-
-проверили LB
-bash-5.1$ gcloud compute backend-services get-health lb-haproxy-rw --global
 ---
-backend: https://www.googleapis.com/compute/v1/projects/disco-ascent-385720/zones/us-west1-a/instanceGroups/us-ig-west
-status:
-  healthStatus:
-  - healthState: HEALTHY
-    instance: https://www.googleapis.com/compute/v1/projects/disco-ascent-385720/zones/us-west1-a/instances/haproxy2
-    ipAddress: 10.138.0.9
-    port: 5432
-  kind: compute#backendServiceGroupHealth
----
-backend: https://www.googleapis.com/compute/v1/projects/disco-ascent-385720/zones/us-east1-b/instanceGroups/us-ig-east
-status:
-  healthStatus:
-  - healthState: UNHEALTHY
-    instance: https://www.googleapis.com/compute/v1/projects/disco-ascent-385720/zones/us-east1-b/instances/haproxy1
-    ipAddress: 10.190.0.3
-    port: 5432
-  kind: compute#backendServiceGroupHealth
-
-тест
-LB->Oregon->Oregon
-scaling factor: 1
-query mode: simple
-number of clients: 20
-number of threads: 1
-duration: 300 s
-number of transactions actually processed: 238
-latency average = 4639.274 ms
-latency stddev = 1258.132 ms
-average connection time = 955.030 ms
-tps = 0.786657 (including reconnection times)
-pgbench: fatal: Run was aborted; the above results are incomplete.
-
-
-----
-stub
