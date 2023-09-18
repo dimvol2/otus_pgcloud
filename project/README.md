@@ -127,16 +127,6 @@ EOF
   done;
 ```
 
-???
-synchronous_mode: true
-https://patroni.readthedocs.io/en/latest/ha_multi_dc.html#synchronous-replication
-(либо асинхронную репликацию с двумя кластерами патрони в двух разных ДЦ)
-тогда можно и
-https://cloud.google.com/load-balancing/docs/tcp/#gcloud
-попробовать, чтобы на чтениях из БД увидеть обращения к разным кластерам
-https://cloud.google.com/load-balancing/docs/tcp/setting-up-tcp
-
-
 - Сконфигурировал patroni
 ```
 for i in ${!gcp_zones[@]};
