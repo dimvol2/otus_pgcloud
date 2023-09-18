@@ -452,7 +452,7 @@ otus=# \l haproxy
 (1 row)
 ```
 
-* Настраиваем Load Balancer по инструкции
+#### Настраиваем Load Balancer по инструкции
 
 https://cloud.google.com/load-balancing/docs/tcp/setting-up-tcp
 
@@ -514,7 +514,7 @@ gcloud compute forwarding-rules create ipv4-lb-haproxy-ro-forward-rule --global 
 --target-tcp-proxy proxy-lb-haproxy-ro --address ipv4-lb-haproxy --ports 5433
 ```
 
-- Тестирование
+* Тестирование
 
 gcloud compute instances stop pgsql0 --zone=us-east1-b
 
