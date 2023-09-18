@@ -440,7 +440,8 @@ systemctl restart haproxy
 HAProxy_screenshot.png
 http://34.131.44.32:7000/
 
-
+- Проверил работу одного из haproxy в ro- и rw-режимах
+```
 root@haproxy1:~# psql -h 127.0.0.1 -d otus -U postgres -p 5433
 Password for user postgres: 
 psql (14.9 (Ubuntu 14.9-0ubuntu0.22.04.1), server 15.4 (Ubuntu 15.4-1.pgdg22.04+1))
@@ -467,17 +468,14 @@ otus=# \l haproxy
 ---------+----------+----------+---------+---------+-------------------
  haproxy | postgres | UTF8     | C.UTF-8 | C.UTF-8 | 
 (1 row)
-
-gcloud compute instances stop pgsql0 --zone=us-east1-b
-
-HAProxy_degrade_screenshot.png
-http://34.131.44.32:7000/
-
+```
 
 - Настроил Load Balancer по инструкции
 
 https://cloud.google.com/load-balancing/docs/tcp/setting-up-tcp
 
+- Создал instance groups и добавил в каждую по одной ВМ с haproxy
+```
 gcloud compute instance-groups unmanaged create us-ig-east --zone us-east1-b
 gcloud compute instance-groups unmanaged create us-ig-west --zone us-west1-a
 
@@ -486,75 +484,57 @@ gcloud compute instance-groups set-named-ports us-ig-west --zone=us-west1-a --na
 
 gcloud compute instance-groups unmanaged add-instances us-ig-east --zone=us-east1-b --instances=haproxy1
 gcloud compute instance-groups unmanaged add-instances us-ig-west --zone=us-west1-a --instances=haproxy2
+```
 
+- Настроил firewall
+```
 gcloud compute firewall-rules create allow-haproxy-ro-rw --allow=tcp:5432,tcp:5433 \
   --description="Allow incoming traffic to haproxy service" --direction=INGRESS
+```
 
-- Настроил health-check
+- Создал health-check
 ```
 gcloud compute health-checks create tcp haproxy-rw-health-check --port 5432
 gcloud compute health-checks create tcp haproxy-ro-health-check --port 5433
 ```
-/*
-bash-5.1$ gcloud compute backend-services create haproxy-lb --global-health-checks --global --protocol TCP --health-checks haproxy-rw-health-check,haproxy-ro-health-check --timeout 5s --port-name haproxy-rw,haproxy-ro
-ERROR: (gcloud.compute.backend-services.create) Could not fetch resource:
- - Value for field 'resource.healthChecks' is too large: maximum size 1 element(s); actual size 2.
-*/
 
-!one port by backend
+- Создал сервисы для read-write и read-only режимов работы через haproxy
+```
 gcloud compute backend-services create lb-haproxy-rw --global-health-checks --global --protocol TCP \
 --health-checks haproxy-rw-health-check --timeout 5s --port-name haproxy-rw
 
 gcloud compute backend-services create lb-haproxy-ro --global-health-checks --global --protocol TCP \
---health-checks haproxy-ro-health-check --timeout 5s --port-name haproxy-ro \
---tracking-mode=PER_SESSION --session-affinity CLIENT_IP --idle-timeout-sec=60
+--health-checks haproxy-ro-health-check --timeout 5s --port-name haproxy-ro
+```
 
+- Добавил instance groups в каждый сервис
+```
+gcloud compute backend-services add-backend lb-haproxy-rw --global --instance-group us-ig-west --instance-group-zone us-west1-a
+gcloud compute backend-services add-backend lb-haproxy-rw --global --instance-group us-ig-east --instance-group-zone us-east1-b
 
-gcloud compute backend-services add-backend lb-haproxy-rw --global --instance-group us-ig-west --instance-group-zone us-west1-a \
---balancing-mode UTILIZATION #?? --max-utilization 0.9
-gcloud compute backend-services add-backend lb-haproxy-rw --global --instance-group us-ig-east --instance-group-zone us-east1-b \
---balancing-mode UTILIZATION #?? --max-utilization 0.9
+gcloud compute backend-services add-backend lb-haproxy-ro --global --instance-group us-ig-west --instance-group-zone us-west1-a
+gcloud compute backend-services add-backend lb-haproxy-ro --global --instance-group us-ig-east --instance-group-zone us-east1-b
+```
 
-gcloud compute backend-services add-backend lb-haproxy-ro --global --instance-group us-ig-west --instance-group-zone us-west1-a \
---balancing-mode UTILIZATION #--max-utilization 0.9
-gcloud compute backend-services add-backend lb-haproxy-ro --global --instance-group us-ig-east --instance-group-zone us-east1-b \
---balancing-mode UTILIZATION #--max-utilization 0.9
-
+- Создал прокси для сервисов
+```
 gcloud compute target-tcp-proxies create proxy-lb-haproxy-rw --backend-service lb-haproxy-rw --proxy-header NONE
-/*
-gcloud compute addresses list 
-NAME                ADDRESS/RANGE   TYPE      PURPOSE  NETWORK  REGION  SUBNET  STATUS
-ipv4-lb-haproxy-rw  35.244.159.129  EXTERNAL                                    RESERVED
-*/
-
-gcloud compute addresses create ipv4-lb-haproxy-rw --ip-version=IPV4 --global
-gcloud compute forwarding-rules create ipv4-lb-haproxy-rw-forward-rule --global \
---target-tcp-proxy proxy-lb-haproxy-rw --address ipv4-lb-haproxy-rw --ports 5432
-
-
-
-/*
->gcloud compute addresses describe ipv4-lb-haproxy-rw --global
-address: 35.244.159.129
-addressType: EXTERNAL
-creationTimestamp: '2023-09-16T14:12:29.780-07:00'
-description: ''
-id: '293204127522727122'
-ipVersion: IPV4
-kind: compute#address
-labelFingerprint: 42WmSpB8rSM=
-name: ipv4-lb-haproxy-rw
-networkTier: PREMIUM
-selfLink: https://www.googleapis.com/compute/v1/projects/disco-ascent-385720/global/addresses/ipv4-lb-haproxy-rw
-status: IN_USE
-users:
-- https://www.googleapis.com/compute/v1/projects/disco-ascent-385720/global/forwardingRules/ipv4-lb-haproxy-rw-forward-rule
-*/
-
 gcloud compute target-tcp-proxies create proxy-lb-haproxy-ro --backend-service lb-haproxy-ro --proxy-header NONE
-gcloud compute addresses create ipv4-lb-haproxy-ro --ip-version=IPV4 --global
+```
+
+- Получил IP-адрес, создал forward rules для обоих портов
+```
+gcloud compute addresses create ipv4-lb-haproxy --ip-version=IPV4 --global
+
+gcloud compute forwarding-rules create ipv4-lb-haproxy-rw-forward-rule --global \
+--target-tcp-proxy proxy-lb-haproxy-rw --address ipv4-lb-haproxy --ports 5432
 gcloud compute forwarding-rules create ipv4-lb-haproxy-ro-forward-rule --global \
---target-tcp-proxy proxy-lb-haproxy-ro --address ipv4-lb-haproxy-ro --ports 5433
+--target-tcp-proxy proxy-lb-haproxy-ro --address ipv4-lb-haproxy --ports 5433
+```
+
+- Тестирование
+
+gcloud compute instances stop pgsql0 --zone=us-east1-b
 
 /*
 bash-5.1$ gcloud compute backend-services get-health lb-haproxy-ro --global
