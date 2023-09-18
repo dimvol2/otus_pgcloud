@@ -265,67 +265,6 @@ for i in ${!gcp_zones[@]};
   done;
 ```
 
-- Создал БД otus и протестировал работу ноды через pgbouncer тестом pgbench по умолчанию
-```
-root@pgsql2:~# psql -U postgres -h 127.0.0.1
-psql (15.4 (Ubuntu 15.4-2.pgdg22.04+1))
-Type "help" for help.
-
-postgres=# create database otus;
-CREATE DATABASE
-```
-
-надо ли этот pgbench??
-
-```
-root@pgsql2:~# pgbench -U postgres -p 6432 -i -d otus -h 127.0.0.1
-Password: 
-dropping old tables...
-NOTICE:  table "pgbench_accounts" does not exist, skipping
-NOTICE:  table "pgbench_branches" does not exist, skipping
-NOTICE:  table "pgbench_history" does not exist, skipping
-NOTICE:  table "pgbench_tellers" does not exist, skipping
-creating tables...
-generating data (client-side)...
-100000 of 100000 tuples (100%) done (elapsed 0.04 s, remaining 0.00 s)
-vacuuming...
-creating primary keys...
-done in 0.87 s (drop tables 0.00 s, create tables 0.01 s, client-side generate 0.35 s, vacuum 0.07 s, primary keys 0.44 s).
-
-postgres@pgsql0:~$ pgbench -p 6432 -c 20 -C -T 20 -P 1 -d otus -h 1
-Password: 
-
-[skipped output]
-scaling factor: 1
-query mode: simple
-number of clients: 20
-number of threads: 1
-maximum number of tries: 1
-duration: 20 s
-number of transactions actually processed: 1396
-number of failed transactions: 0 (0.000%)
-latency average = 273.553 ms
-latency stddev = 131.789 ms
-average connection time = 11.193 ms
-tps = 69.631026 (including reconnection times)
-```
-- Проверил работу pgbouncer в консоли
-```
-postgres@pgsql0:~$ psql -h 127.0.0.1 -p 6432 -d pgbouncer
-Password for user postgres: 
-psql (15.4 (Ubuntu 15.4-1.pgdg22.04+1), server 1.20.0/bouncer)
-WARNING: psql major version 15, server major version 1.20.
-         Some psql features might not work.
-Type "help" for help.
-
-pgbouncer=# show stats_totals;
- database  | xact_count | query_count | bytes_received | bytes_sent | xact_time | query_time | wait_time 
------------+------------+-------------+----------------+------------+-----------+------------+-----------
- otus      |       1414 |        9804 |        2181618 |     388657 | 379267182 |  346347017 |    138773
- pgbouncer |          1 |           1 |              0 |          0 |         0 |          0 |         0
-(2 rows)
-```
-
 - Развернул две ВМ под haproxy
 ```
 gcloud compute instances create haproxy1 \
@@ -514,7 +453,136 @@ gcloud compute forwarding-rules create ipv4-lb-haproxy-ro-forward-rule --global 
 --target-tcp-proxy proxy-lb-haproxy-ro --address ipv4-lb-haproxy --ports 5433
 ```
 
-* Тестирование
+#### Тестирование
+
+- Проверил текущую конфигурацию кластера patroni
+```
+root@pgsql0:~# patronictl -c /etc/patroni.yml list
++ Cluster: patroni ----+---------+-----------+----+-----------+
+| Member | Host        | Role    | State     | TL | Lag in MB |
++--------+-------------+---------+-----------+----+-----------+
+| pgsql0 | 10.142.0.13 | Replica | streaming |  1 |         0 |
+| pgsql1 | 10.138.0.16 | Replica | streaming |  1 |         0 |
+| pgsql2 | 10.128.0.35 | Leader  | running   |  1 |           |
++--------+-------------+---------+-----------+----+-----------+
+```
+
+- Создал БД otus и протестировал работу непосредственно с rw-ноды через pgbouncer тестом pgbench по умолчанию
+```
+root@pgsql2:~# psql -U postgres -h 127.0.0.1
+psql (15.4 (Ubuntu 15.4-2.pgdg22.04+1))
+Type "help" for help.
+
+postgres=# create database otus;
+CREATE DATABASE
+
+root@pgsql2:~# pgbench -U postgres -p 6432 -i -d otus -h 127.0.0.1
+Password: 
+dropping old tables...
+NOTICE:  table "pgbench_accounts" does not exist, skipping
+NOTICE:  table "pgbench_branches" does not exist, skipping
+NOTICE:  table "pgbench_history" does not exist, skipping
+NOTICE:  table "pgbench_tellers" does not exist, skipping
+creating tables...
+generating data (client-side)...
+100000 of 100000 tuples (100%) done (elapsed 0.04 s, remaining 0.00 s)
+vacuuming...
+creating primary keys...
+done in 0.87 s (drop tables 0.00 s, create tables 0.01 s, client-side generate 0.35 s, vacuum 0.07 s, primary keys 0.44 s).
+
+root@pgsql2:~# pgbench -U postgres -p 6432 -c 20 -C -T 20 -P 1 -d otus -h 127.0.0.1
+Password: 
+
+[skipped output]
+scaling factor: 1
+query mode: simple
+number of clients: 20
+number of threads: 1
+maximum number of tries: 1
+duration: 20 s
+number of transactions actually processed: 1395
+number of failed transactions: 0 (0.000%)
+latency average = 274.113 ms
+latency stddev = 166.954 ms
+average connection time = 11.263 ms
+tps = <span style="color: red;">69.546483</span> (including reconnection times)
+```
+
+- Развернул ВМ с которой будут проводится remote-тесты HA
+```
+gcloud compute instances create client \
+  --machine-type=e2-small \
+  --image-project=ubuntu-os-cloud --image=ubuntu-2204-jammy-v20230908 \
+  --zone=us-central1-a
+```
+
+- Установил необходимое ПО 
+```
+DEBIAN_FRONTEND=noninteractive apt -qy update && \\
+apt -yq install postgresql-client-common postgresql-client postgresql-contrib
+```
+
+- Провёл тест с клиентской ВМ через haproxy2
+```
+root@client:~# pgbench -U postgres -p 5432 -c 20 -j 10 -T 60 -P10 -d otus -h haproxy2.us-west1-a.c.disco-ascent-385720.internal
+Password: 
+
+[skipped output]
+scaling factor: 1
+query mode: simple
+number of clients: 20
+number of threads: 10
+duration: 60 s
+number of transactions actually processed: 464
+latency average = 2590.295 ms
+latency stddev = 1288.548 ms
+initial connection time = 1246.551 ms
+tps = <span style="color: red;">7.563799</span> (without initial connection time)
+```
+
+- Получил адрес load balancera
+```
+bash-5.1$ gcloud compute addresses list
+NAME             ADDRESS/RANGE  TYPE      PURPOSE  NETWORK  REGION  SUBNET  STATUS
+ipv4-lb-haproxy  34.98.115.194  EXTERNAL                                    IN_USE
+```
+
+- Провёл тест с клиентской ВМ через load balancer
+```
+root@client:~# pgbench -U postgres -p 5432 -c 20 -j 10 -T 60 -P10 -d otus -h 34.98.115.194
+Password: 
+
+[skipped output]
+scaling factor: 1
+query mode: simple
+number of clients: 20
+number of threads: 10
+duration: 60 s
+number of transactions actually processed: 462
+latency average = 2067.261 ms
+latency stddev = 1096.623 ms
+initial connection time = 756.099 ms
+tps = <span style="color: red;">7.555153</span> (without initial connection time)
+```
+
+- Провёл тест с московского локалхоста через европейский vpn:
+```
+moscow-home-provider:~# pgbench -U postgres -p 5432 -c 20 -j 10 -T 60 -P10 -d otus -h 34.98.115.194
+Password: 
+
+[skipped output]
+scaling factor: 1
+query mode: simple
+number of clients: 20
+number of threads: 10
+duration: 60 s
+number of transactions actually processed: 149
+latency average = 3743.454 ms
+latency stddev = 1702.212 ms
+initial connection time = 1812.978 ms
+tps = <span style="color: red;">2.448568</span> (without initial connection time)
+
+```
 
 gcloud compute instances stop pgsql0 --zone=us-east1-b
 
